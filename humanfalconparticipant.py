@@ -15,19 +15,19 @@ class FalconHapticHandle(Handle):
     
         self.falcon = NovintFalcon(timestep_s, falcon_device_num)
         
-        pyglet.clock.schedule_interval(self.falcon.update_state, 0.005)
+        pyglet.clock.schedule_interval(self.falcon.update_state, 0.001)
         
         super().__init__()
     
     def get_position(self):
         pos = self.falcon.get_pos()
         
-        return pos[2]
+        return -pos[2]
         
     def update_force(self, force):
-        self.falcon.add_force(0, 0, force)
+        self.falcon.add_force(0, 0, -force)
         self.falcon.output_forces()
-        super().update_force(force)
+        super().update_force(-force)
     
 
 class HumanFalconParticipant(Participant):
@@ -43,6 +43,7 @@ class HumanFalconParticipant(Participant):
         
         
         super().__init__(name, FalconHapticHandle(timestep_s, falcon_device_num))
+    
     
     def on_draw(self):
     
@@ -68,6 +69,8 @@ class HumanFalconParticipant(Participant):
         objs = []
         if "dynamic_objects" in self.visible_state:
             for key, value in self.visible_state["dynamic_objects"].items():
+                if value["appearance"] is None:
+                    continue
                 if value["appearance"]["shape"] == "circle":
                     x = self.scale
                     y = self.scale + (value["state"][0] * self.scale)
@@ -76,14 +79,10 @@ class HumanFalconParticipant(Participant):
                     objs.append(pyglet.shapes.Circle(x, y, radius, color=color, batch=batch))
         
         batch.draw()
-        self.fps_display.draw()
-        
-            
-        
+        self.fps_display.draw()        
         
     
-    def get_action(self, visible_state):
-        
+    def get_action(self, visible_state): 
         self.visible_state = visible_state
 
 

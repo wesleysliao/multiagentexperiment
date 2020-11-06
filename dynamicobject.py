@@ -101,24 +101,56 @@ class TensionSpring(Constraint):
 
 
 class BindPosition(Constraint):
-    def __init__(self, target, reference, proportion=1.0):
+    def __init__(self, target, reference, offset=0.0, proportion=1.0):
         super().__init__(target)
         self.references.append(reference)
+        self.offset = offset
         self.proportion = proportion
 
     def apply(self):
-        self.target.state[0] = self.references[0].state[0] * self.proportion
+        self.target.state[0] = (self.references[0].state[0] * self.proportion) + self.offset
 
 
 class PositionLimits(Constraint):
-    def __init__(self, target, pos, neg):
+    def __init__(self, target, pos=None, neg=None, reference=None):
         self.bound_pos = pos
         self.bound_neg = neg
 
         super().__init__(target)
+        if reference is not None:
+            self.references.append(reference)
 
     def apply(self):
-       if(self.target.state[0] > self.bound_pos):
-           self.target.state[0] = self.bound_pos
-       elif(self.target.state[0] < self.bound_neg):
-           self.target.state[0] = self.bound_neg
+       ref_offset = 0.0
+       if len(self.references) > 0:
+           ref_offset = self.references[0].state[0]
+       
+       if self.bound_pos is not None and (self.target.state[0] > (ref_offset + self.bound_pos)):
+           self.target.state[0] = (ref_offset + self.bound_pos)
+       if self.bound_neg is not None and (self.target.state[0] < (ref_offset + self.bound_neg)):
+           self.target.state[0] = (ref_offset + self.bound_neg)
+           
+           
+class SpringLawSolid(Constraint):
+    def __init__(self, target, reference, spring_coeff, offset):
+        self.spring_coeff = spring_coeff
+        self.offset = offset
+        super().__init__(target)
+        self.references.append(reference)
+
+    def apply(self):
+        target = self.target.state[0]
+        ref = self.references[0].state[0]
+
+        penetration = (ref + self.offset) - target
+        if np.sign(penetration) == np.sign(self.spring_coeff):
+           force = np.sign(self.spring_coeff) * penetration * self.spring_coeff
+           self.target.add_force(force)
+
+
+
+
+
+
+
+
