@@ -1,0 +1,26 @@
+
+
+libnifalcon:
+  packages:
+    g++
+    cmake
+    libusb-1.0-0-dev
+  copy udev rules to /etc/udev/rules.d/ from libnifalcon/linux/
+
+pysdl2:
+  packages:
+    python3-pip
+    libsdl2-dev
+    libsdl2-gfx-dev
+
+  pip3 install -U pysdl2
+
+
+pyglet:
+  pip3 install -U pyglet
+
+pyusb:
+  pip3 install -U pyusb
+  
+numpy:
+  pip3 install -U numpy
