@@ -165,7 +165,7 @@ class MultiAgentTask:
     TASK_COMPLETED = 2
     TASK_FAILED = 3
     
-    def __init__(self, name, duration, datafolder, timestep=0.1):
+    def __init__(self, name, duration, datafolder, timestep):
     
         self.name = name
 

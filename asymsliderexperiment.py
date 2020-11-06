@@ -42,6 +42,7 @@ class HiddenObjectsPerspective(Perspective):
         return perspective_state
          
 
+
 class FlippedHiddenObjectsPerspective(FlippedPerspective):
     def __init__(self, hidden_obj_names):
         self.hidden_obj_names = hidden_obj_names
@@ -57,10 +58,31 @@ class FlippedHiddenObjectsPerspective(FlippedPerspective):
          
 
 
+class MessageTask(MultiAgentTask):
+  
+    def __init__(self, name, message, duration, datafolder, timestep):
+        super().__init__(name, duration, datafolder, timestep)
+        
+        self.message = message
+  
+        p1_handle_obj = DynamicObject("p1_handle", 0.0)
+        p2_handle_obj = DynamicObject("p2_handle", 0.0)
+        self.add_obj(p1_handle_obj)
+        self.add_obj(p2_handle_obj)
+        self.roles.append(Role(p1_handle_obj))
+        self.roles.append(Role(p2_handle_obj))
+        
+    def get_state_dict(self):
+        state = super().get_state_dict()
+        state["task_message"] = self.message        
+        return state
+
+
+
 class AsymForceTrackingTask(MultiAgentTask):
    
-    def __init__(self, name, duration, datafolder, timestep = 0.1):
-        super().__init__(name, duration, datafolder, timestep=timestep)
+    def __init__(self, name, duration, datafolder, timestep):
+        super().__init__(name, duration, datafolder, timestep)
         
         
         self.add_ref(ReferenceTrajectory("sos", trajectory_function = sos_gen()))
@@ -162,9 +184,11 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         
         self.timestep = 1.0 / 120.0
         
-        self.procedure.append(AsymForceTrackingTask("0-equal", 10.0, self.datafolder, timestep=self.timestep))
-        self.procedure.append(AsymForceTrackingTask("1-equal", 10.0, self.datafolder, timestep=self.timestep))
-        self.procedure.append(AsymForceTrackingTask("2-equal", 10.0, self.datafolder, timestep=self.timestep))
+        self.procedure.append(MessageTask("msgwelcome", "Welcome to the Experiment", 10.0, self.datafolder, self.timestep))
+        self.procedure.append(AsymForceTrackingTask("0-equal", 10.0, self.datafolder, self.timestep))
+        self.procedure.append(AsymForceTrackingTask("1-equal", 10.0, self.datafolder, self.timestep))
+        self.procedure.append(AsymForceTrackingTask("2-equal", 10.0, self.datafolder, self.timestep))
+        self.procedure.append(MessageTask("msgcomplete", "Experiment Complete.", 10.0, self.datafolder, self.timestep))
         
         self.participants.append(HumanFalconParticipant("player1", self.timestep, 0))
         self.participants.append(HumanFalconParticipant("player2", self.timestep, 1))

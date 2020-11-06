@@ -79,7 +79,14 @@ class HumanFalconParticipant(Participant):
                     objs.append(pyglet.shapes.Circle(x, y, radius, color=color, batch=batch))
         
         batch.draw()
-        self.fps_display.draw()        
+        self.fps_display.draw()
+        
+        if "task_message" in self.visible_state:
+            label=pyglet.text.Label(self.visible_state["task_message"],
+                                    font_name="FreeMono", font_size=12,
+                                    x=self.scale, y=self.scale,
+                                    anchor_x="center", anchor_y="center")
+            label.draw()
         
     
     def get_action(self, visible_state): 
