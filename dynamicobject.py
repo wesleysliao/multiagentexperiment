@@ -13,10 +13,12 @@ class DynamicObject:
                  name,
                  mass,
                  initial_state=[0.0, 0.0, 0.0],
+                 record_data=True,
                  appearance=None):
 
         self.name = name
         self.appearance = appearance
+        self.record_data = record_data
         
         self.mass = mass
         self.state = np.zeros((3,))

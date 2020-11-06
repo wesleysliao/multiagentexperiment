@@ -60,8 +60,8 @@ class FlippedHiddenObjectsPerspective(FlippedPerspective):
 
 class MessageTask(MultiAgentTask):
   
-    def __init__(self, name, message, datafolder, timestep, duration):
-        super().__init__(name, datafolder, timestep, duration)
+    def __init__(self, name, message, timestep, duration):
+        super().__init__(name, timestep, duration=duration)
         
         self.message = message
   
@@ -78,9 +78,9 @@ class MessageTask(MultiAgentTask):
 
 class ResetHandleTask(MessageTask):
 
-    def __init__(self, name, datafolder, timestep):
+    def __init__(self, name, timestep):
         super().__init__(name, "Gently pull your handle toward you until the handle stops.", 
-                         datafolder, timestep, None)
+                          timestep, None)
                          
         handle_obj = self.dynamic_objects[0]
         self.add_endcond(PositionThreshold(handle_obj, -0.9, check_greater=False))
@@ -89,8 +89,8 @@ class ResetHandleTask(MessageTask):
 
 class SoloAsymForceTrackingTask(MultiAgentTask):
    
-    def __init__(self, name, datafolder, timestep, duration):
-        super().__init__(name, datafolder, timestep, duration=duration)
+    def __init__(self, name, timestep, datafolder, duration):
+        super().__init__(name, timestep,  datafolder=datafolder, duration=duration)
         
         self.add_ref(ReferenceTrajectory("sos", trajectory_function = sos_gen()))
         
@@ -104,6 +104,7 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
                                       initial_state=[-1.0, 0.0, 0.0])
         handle_draw = DynamicObject("handle_draw", 0.0, 
                                        initial_state=[-1.0, 0.0, 0.0],
+                                       record_data=False,
                                        appearance={"shape":"circle",
                                                    "radius":obj_radius,
                                                    "color":self_color})
@@ -116,6 +117,7 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
         
         self_contact_obj = DynamicObject("self_contact", 0.0, 
                                             initial_state=[0.0, 0.0, 0.0],
+                                            record_data=False,
                                             appearance={"shape":"circle", 
                                                         "radius":obj_radius/2, 
                                                         "color":self_color})                                  
@@ -140,8 +142,8 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
         
 class DyadAsymForceTrackingTask(MultiAgentTask):
    
-    def __init__(self, name, datafolder, timestep, duration):
-        super().__init__(name, datafolder, timestep, duration=duration)
+    def __init__(self, name,  timestep, datafolder, duration):
+        super().__init__(name, timestep, datafolder=datafolder,duration=duration)
         
         
         self.add_ref(ReferenceTrajectory("sos", trajectory_function = sos_gen()))
@@ -156,6 +158,7 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
                                       initial_state=[-1.0, 0.0, 0.0])
         p1_handle_draw = DynamicObject("p1_handle_draw", 0.0, 
                                        initial_state=[-1.0, 0.0, 0.0],
+                                       record_data=False,
                                        appearance={"shape":"circle",
                                                    "radius":obj_radius,
                                                    "color":self_color})
@@ -165,6 +168,7 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
                                       
         p2_handle_draw = DynamicObject("p2_handle_draw", 0.0, 
                                        initial_state=[1.0, 0.0, 0.0],
+                                       record_data=False,
                                        appearance={"shape":"circle",
                                                    "radius":obj_radius, 
                                                    "color":self_color})
@@ -177,24 +181,28 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
         
         p1_self_contact_obj = DynamicObject("p1_self_contact", 0.0, 
                                             initial_state=[0.0, 0.0, 0.0],
+                                            record_data=False,
                                             appearance={"shape":"circle", 
                                                         "radius":obj_radius/2, 
                                                         "color":self_color})
                                                
         p1_other_contact_obj = DynamicObject("p1_other_contact", 0.0, 
                                              initial_state=[0.0, 0.0, 0.0],
+                                             record_data=False,
                                              appearance={"shape":"circle", 
                                                          "radius":obj_radius/2, 
                                                          "color":other_color})
        
         p2_self_contact_obj = DynamicObject("p2_self_contact", 0.0, 
                                             initial_state=[0.0, 0.0, 0.0],
+                                            record_data=False,
                                             appearance={"shape":"circle", 
                                                         "radius":obj_radius/2, 
                                                         "color":self_color})
                                                
         p2_other_contact_obj = DynamicObject("p2_other_contact", 0.0, 
                                              initial_state=[0.0, 0.0, 0.0],
+                                             record_data=False,
                                              appearance={"shape":"circle", 
                                                          "radius":obj_radius/2, 
                                                          "color":other_color})
@@ -243,24 +251,24 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         
         self.timestep = 1.0 / 120.0
         
-        self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.datafolder, self.timestep, 3.0),
-                               MessageTask("msgwelcome2", "Welcome to the Experiment 2",  self.datafolder,self.timestep, 3.0)])
+        self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.timestep, 3.0),
+                               MessageTask("msgwelcome2", "Welcome to the Experiment 2", self.timestep, 3.0)])
         
-        self.procedure.append([ResetHandleTask("0-reset1", self.datafolder, self.timestep),
-                               ResetHandleTask("0-reset2", self.datafolder, self.timestep)])                      
-        self.procedure.append([SoloAsymForceTrackingTask("0-solo1", self.datafolder, self.timestep, 20.0),
-                               SoloAsymForceTrackingTask("0-solo2", self.datafolder, self.timestep, 20.0)])
+        self.procedure.append([ResetHandleTask("0-reset1", self.timestep),
+                               ResetHandleTask("0-reset2",  self.timestep)])                      
+        self.procedure.append([SoloAsymForceTrackingTask("0-solo1", self.timestep, self.datafolder, 20.0),
+                               SoloAsymForceTrackingTask("0-solo2", self.timestep, self.datafolder, 20.0)])
         
-        self.procedure.append([ResetHandleTask("1-reset1", self.datafolder, self.timestep),
-                               ResetHandleTask("1-reset2", self.datafolder, self.timestep)])              
-        self.procedure.append([DyadAsymForceTrackingTask("1-dyad", self.datafolder, self.timestep, 20.0)])
+        self.procedure.append([ResetHandleTask("1-reset1", self.timestep),
+                               ResetHandleTask("1-reset2", self.timestep)])              
+        self.procedure.append([DyadAsymForceTrackingTask("1-dyad", self.timestep, self.datafolder, 20.0)])
         
-        self.procedure.append([ResetHandleTask("2-reset1", self.datafolder, self.timestep),
-                               ResetHandleTask("2-reset2", self.datafolder, self.timestep)])
-        self.procedure.append([DyadAsymForceTrackingTask("2-dyad", self.datafolder, self.timestep, 20.0)])
+        self.procedure.append([ResetHandleTask("2-reset1", self.timestep),
+                               ResetHandleTask("2-reset2", self.timestep)])
+        self.procedure.append([DyadAsymForceTrackingTask("2-dyad", self.timestep, self.datafolder, 20.0)])
         
-        self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.datafolder, self.timestep, 10.0),
-                               MessageTask("msgcomplete2", "Experiment Complete. 2", self.datafolder, self.timestep, 10.0)])
+        self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 10.0),
+                               MessageTask("msgcomplete2", "Experiment Complete. 2", self.timestep, 10.0)])
         
         self.participants.append(HumanFalconParticipant("player1", self.timestep, 0))
         self.participants.append(HumanFalconParticipant("player2", self.timestep, 1))

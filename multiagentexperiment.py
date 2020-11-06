@@ -164,7 +164,7 @@ class MultiAgentTask:
     TASK_COMPLETED = 2
     TASK_FAILED = 3
     
-    def __init__(self, name, datafolder, timestep, duration=None):
+    def __init__(self, name, timestep, datafolder=None, duration=None):
     
         self.name = name
 
@@ -209,19 +209,21 @@ class MultiAgentTask:
 
 
     def start(self):
-        time_now = datetime.datetime.now()
-        datetime_str = time_now.strftime("%Y-%b%d-%H%M")
-        
-        self.filename = self.datafolder + "/" + self.name + "_" + datetime_str
-        self.datafile = open(self.filename, 'w')
-        
-        fieldnames = self.get_header()
-        self.datawriter = csv.DictWriter(self.datafile, fieldnames=fieldnames)
-        self.datawriter.writeheader()
+        if self.datafolder is not None:
+            time_now = datetime.datetime.now()
+            datetime_str = time_now.strftime("%Y-%b%d-%H%M")
+            
+            self.filename = self.datafolder + "/" + self.name + "_" + datetime_str
+            self.datafile = open(self.filename, 'w')
+            
+            fieldnames = self.get_header()
+            self.datawriter = csv.DictWriter(self.datafile, fieldnames=fieldnames)
+            self.datawriter.writeheader()
         
         
     def close(self):
-        self.datafile.close()
+        if self.datafolder is not None:
+            self.datafile.close()
 
 
     # The experiment is responsible for repeatedly calling step each timestep.
@@ -259,7 +261,8 @@ class MultiAgentTask:
             dyn_obj.step(self.timestep)
 
             
-        self.write_data(state)
+        if self.datafolder is not None:
+            self.write_data(state)
         
         return self.taskstate
         
@@ -277,6 +280,7 @@ class MultiAgentTask:
             state["dynamic_objects"][dyn_obj.name] = {}
             state["dynamic_objects"][dyn_obj.name]["state"] = dyn_obj.state
             state["dynamic_objects"][dyn_obj.name]["force"] = dyn_obj.force
+            state["dynamic_objects"][dyn_obj.name]["record"] = dyn_obj.record_data
             state["dynamic_objects"][dyn_obj.name]["appearance"] = dyn_obj.appearance
             
         state["reference_trajectories"] = {}
@@ -298,10 +302,11 @@ class MultiAgentTask:
         fieldnames.append("task")
         
         for dyn_obj in self.dynamic_objects:
-            fieldnames.append("object_"+dyn_obj.name+"_pos")
-            fieldnames.append("object_"+dyn_obj.name+"_vel")
-            fieldnames.append("object_"+dyn_obj.name+"_acc")
-            fieldnames.append("object_"+dyn_obj.name+"_force")
+            if dyn_obj.record_data:
+                fieldnames.append("object_"+dyn_obj.name+"_pos")
+                fieldnames.append("object_"+dyn_obj.name+"_vel")
+                fieldnames.append("object_"+dyn_obj.name+"_acc")
+                fieldnames.append("object_"+dyn_obj.name+"_force")
             
             
         
@@ -320,11 +325,12 @@ class MultiAgentTask:
         data["experimenttime"] = state_dict["experimenttime"]
     
         for key, value in state_dict["dynamic_objects"].items():
-            data["object_"+key+"_pos"] = value["state"][0]
-            data["object_"+key+"_vel"] = value["state"][1]
-            data["object_"+key+"_acc"] = value["state"][2]
-            data["object_"+key+"_force"] = value["force"]
-        
+            if value["record"]:
+                data["object_"+key+"_pos"] = value["state"][0]
+                data["object_"+key+"_vel"] = value["state"][1]
+                data["object_"+key+"_acc"] = value["state"][2]
+                data["object_"+key+"_force"] = value["force"]
+            
         
         for key, value in state_dict["reference_trajectories"].items():
             data["reference_"+key+"_now"] = value["now"]
