@@ -79,7 +79,7 @@ class MessageTask(MultiAgentTask):
 class ResetHandleTask(MessageTask):
 
     def __init__(self, name, datafolder, timestep):
-        super().__init__(name, "Gently pull your handle toward you\nuntil the handle stops.", 
+        super().__init__(name, "Gently pull your handle toward you until the handle stops.", 
                          datafolder, timestep, None)
                          
         handle_obj = self.dynamic_objects[0]

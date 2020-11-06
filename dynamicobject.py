@@ -20,6 +20,7 @@ class DynamicObject:
         
         self.mass = mass
         self.state = np.zeros((3,))
+        self.queued_force = 0.0
         self.force = 0.0
 
         self.initial_state = initial_state
@@ -30,15 +31,16 @@ class DynamicObject:
         self.state = self.initial_state
 
     def step(self, dt_s):
+        self.force = self.queued_force
         if self.mass != 0.0:
             self.state[self.ACC] = (self.force / self.mass)
-        self.force = 0.0
+        self.queued_force = 0.0
         self.state[self.VEL] += self.state[self.ACC] * dt_s
         self.state[self.POS] += self.state[self.VEL] * dt_s
 
 
     def add_force(self, force):
-        self.force += force
+        self.queued_force += force
 
 
 

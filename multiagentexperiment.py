@@ -32,8 +32,7 @@ class Role:
         self.handle_object.state[0] = self.perspective.handle_to_task(self.participant.handle.get_position())
             
     def update_forces(self):
-        force = self.perspective.task_to_handle(self.handle_object.force)
-        self.handle_object.force = 0.0
+        force = self.perspective.task_to_handle(self.handle_object.queued_force)
         self.participant.handle.update_force(force)
 
 
@@ -277,6 +276,7 @@ class MultiAgentTask:
         for dyn_obj in self.dynamic_objects:
             state["dynamic_objects"][dyn_obj.name] = {}
             state["dynamic_objects"][dyn_obj.name]["state"] = dyn_obj.state
+            state["dynamic_objects"][dyn_obj.name]["force"] = dyn_obj.force
             state["dynamic_objects"][dyn_obj.name]["appearance"] = dyn_obj.appearance
             
         state["reference_trajectories"] = {}
@@ -301,6 +301,7 @@ class MultiAgentTask:
             fieldnames.append("object_"+dyn_obj.name+"_pos")
             fieldnames.append("object_"+dyn_obj.name+"_vel")
             fieldnames.append("object_"+dyn_obj.name+"_acc")
+            fieldnames.append("object_"+dyn_obj.name+"_force")
             
             
         
@@ -322,6 +323,7 @@ class MultiAgentTask:
             data["object_"+key+"_pos"] = value["state"][0]
             data["object_"+key+"_vel"] = value["state"][1]
             data["object_"+key+"_acc"] = value["state"][2]
+            data["object_"+key+"_force"] = value["force"]
         
         
         for key, value in state_dict["reference_trajectories"].items():
