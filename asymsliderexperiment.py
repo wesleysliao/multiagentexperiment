@@ -6,7 +6,7 @@ import numpy as np
 
 import pyglet
 
-from dynamicobject import DynamicObject, SpringLawSolid, BindPosition, PositionLimits
+from dynamicobject import DynamicObject, SpringLawSolid, BindPosition, PositionLimits, PositionThreshold
 from humanfalconparticipant import HumanFalconParticipant
 from multiagentexperiment import Role, Participant, Perspective, FlippedPerspective, ReferenceTrajectory, MultiAgentTask, MultiAgentExperiment
 
@@ -60,17 +60,14 @@ class FlippedHiddenObjectsPerspective(FlippedPerspective):
 
 class MessageTask(MultiAgentTask):
   
-    def __init__(self, name, message, duration, datafolder, timestep):
-        super().__init__(name, duration, datafolder, timestep)
+    def __init__(self, name, message, datafolder, timestep, duration):
+        super().__init__(name, datafolder, timestep, duration)
         
         self.message = message
   
-        p1_handle_obj = DynamicObject("p1_handle", 0.0)
-        p2_handle_obj = DynamicObject("p2_handle", 0.0)
-        self.add_obj(p1_handle_obj)
-        self.add_obj(p2_handle_obj)
-        self.roles.append(Role(p1_handle_obj))
-        self.roles.append(Role(p2_handle_obj))
+        handle_obj = DynamicObject("handle", 0.0)
+        self.add_obj(handle_obj)
+        self.roles.append(Role(handle_obj))
         
     def get_state_dict(self):
         state = super().get_state_dict()
@@ -79,10 +76,72 @@ class MessageTask(MultiAgentTask):
 
 
 
-class AsymForceTrackingTask(MultiAgentTask):
+class ResetHandleTask(MessageTask):
+
+    def __init__(self, name, datafolder, timestep):
+        super().__init__(name, "Gently pull your handle toward you\nuntil the handle stops.", 
+                         datafolder, timestep, None)
+                         
+        handle_obj = self.dynamic_objects[0]
+        self.add_endcond(PositionThreshold(handle_obj, -0.9, check_greater=False))
+       
+       
+
+class SoloAsymForceTrackingTask(MultiAgentTask):
    
-    def __init__(self, name, duration, datafolder, timestep):
-        super().__init__(name, duration, datafolder, timestep)
+    def __init__(self, name, datafolder, timestep, duration):
+        super().__init__(name, datafolder, timestep, duration=duration)
+        
+        self.add_ref(ReferenceTrajectory("sos", trajectory_function = sos_gen()))
+        
+        obj_radius = 0.05
+        
+        cursor_color = (220, 220, 220)
+        self_color = (0,0,255)
+        other_color = (255, 0, 255)
+        
+        handle_obj = DynamicObject("handle", 0.0, 
+                                      initial_state=[-1.0, 0.0, 0.0])
+        handle_draw = DynamicObject("handle_draw", 0.0, 
+                                       initial_state=[-1.0, 0.0, 0.0],
+                                       appearance={"shape":"circle",
+                                                   "radius":obj_radius,
+                                                   "color":self_color})
+        
+        cursor = DynamicObject("cursor", 0.1, 
+                               initial_state=[0.0, 0.0, 0.0],
+                               appearance={"shape":"circle", 
+                                           "radius":obj_radius, 
+                                           "color":cursor_color})
+        
+        self_contact_obj = DynamicObject("self_contact", 0.0, 
+                                            initial_state=[0.0, 0.0, 0.0],
+                                            appearance={"shape":"circle", 
+                                                        "radius":obj_radius/2, 
+                                                        "color":self_color})                                  
+        
+        self.add_obj(handle_obj)
+        self.add_obj(cursor)
+        
+        self.add_obj(self_contact_obj)
+        self.add_obj(handle_draw)
+        
+        self.add_constraint(BindPosition(self_contact_obj, cursor, offset=-obj_radius))
+        
+        self.add_constraint(BindPosition(handle_draw, handle_obj))
+        self.add_constraint(PositionLimits(handle_draw, pos=-(2 * obj_radius), reference=cursor))
+        
+        self.add_constraint(SpringLawSolid(handle_obj, cursor, -10.0, -(obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(cursor, handle_obj, 10.0, (obj_radius * 2)))
+        
+        self.roles.append(Role(handle_obj))
+        
+        
+        
+class DyadAsymForceTrackingTask(MultiAgentTask):
+   
+    def __init__(self, name, datafolder, timestep, duration):
+        super().__init__(name, datafolder, timestep, duration=duration)
         
         
         self.add_ref(ReferenceTrajectory("sos", trajectory_function = sos_gen()))
@@ -184,11 +243,24 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         
         self.timestep = 1.0 / 120.0
         
-        self.procedure.append(MessageTask("msgwelcome", "Welcome to the Experiment", 10.0, self.datafolder, self.timestep))
-        self.procedure.append(AsymForceTrackingTask("0-equal", 10.0, self.datafolder, self.timestep))
-        self.procedure.append(AsymForceTrackingTask("1-equal", 10.0, self.datafolder, self.timestep))
-        self.procedure.append(AsymForceTrackingTask("2-equal", 10.0, self.datafolder, self.timestep))
-        self.procedure.append(MessageTask("msgcomplete", "Experiment Complete.", 10.0, self.datafolder, self.timestep))
+        self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.datafolder, self.timestep, 3.0),
+                               MessageTask("msgwelcome2", "Welcome to the Experiment 2",  self.datafolder,self.timestep, 3.0)])
+        
+        self.procedure.append([ResetHandleTask("0-reset1", self.datafolder, self.timestep),
+                               ResetHandleTask("0-reset2", self.datafolder, self.timestep)])                      
+        self.procedure.append([SoloAsymForceTrackingTask("0-solo1", self.datafolder, self.timestep, 20.0),
+                               SoloAsymForceTrackingTask("0-solo2", self.datafolder, self.timestep, 20.0)])
+        
+        self.procedure.append([ResetHandleTask("1-reset1", self.datafolder, self.timestep),
+                               ResetHandleTask("1-reset2", self.datafolder, self.timestep)])              
+        self.procedure.append([DyadAsymForceTrackingTask("1-dyad", self.datafolder, self.timestep, 20.0)])
+        
+        self.procedure.append([ResetHandleTask("2-reset1", self.datafolder, self.timestep),
+                               ResetHandleTask("2-reset2", self.datafolder, self.timestep)])
+        self.procedure.append([DyadAsymForceTrackingTask("2-dyad", self.datafolder, self.timestep, 20.0)])
+        
+        self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.datafolder, self.timestep, 10.0),
+                               MessageTask("msgcomplete2", "Experiment Complete. 2", self.datafolder, self.timestep, 10.0)])
         
         self.participants.append(HumanFalconParticipant("player1", self.timestep, 0))
         self.participants.append(HumanFalconParticipant("player2", self.timestep, 1))

@@ -41,10 +41,13 @@ class DynamicObject:
         self.force += force
 
 
+
 class Constraint:
+
     def __init__(self, target):
         self.target = target
         self.references = []
+
 
     def apply(self):
         pass
@@ -63,11 +66,13 @@ class Damping(Constraint):
 
 
 class CompressionSpring(Constraint):
+
     def __init__(self, target, reference, spring_coeff, resting_length):
         self.spring_coeff = spring_coeff
         self.resting_length = resting_length
         super().__init__(target)
         self.references.append(reference)
+
 
     def apply(self):
 
@@ -101,17 +106,20 @@ class TensionSpring(Constraint):
 
 
 class BindPosition(Constraint):
+
     def __init__(self, target, reference, offset=0.0, proportion=1.0):
         super().__init__(target)
         self.references.append(reference)
         self.offset = offset
         self.proportion = proportion
 
+
     def apply(self):
         self.target.state[0] = (self.references[0].state[0] * self.proportion) + self.offset
 
 
 class PositionLimits(Constraint):
+
     def __init__(self, target, pos=None, neg=None, reference=None):
         self.bound_pos = pos
         self.bound_neg = neg
@@ -119,6 +127,7 @@ class PositionLimits(Constraint):
         super().__init__(target)
         if reference is not None:
             self.references.append(reference)
+
 
     def apply(self):
        ref_offset = 0.0
@@ -132,11 +141,13 @@ class PositionLimits(Constraint):
            
            
 class SpringLawSolid(Constraint):
+
     def __init__(self, target, reference, spring_coeff, offset):
         self.spring_coeff = spring_coeff
         self.offset = offset
         super().__init__(target)
         self.references.append(reference)
+
 
     def apply(self):
         target = self.target.state[0]
@@ -149,8 +160,37 @@ class SpringLawSolid(Constraint):
 
 
 
+class Condition:
+
+    def __init__(self, target):
+        self.target = target
+        self.references = []
 
 
+    def check(self):
+        return False
+
+
+
+class PositionThreshold(Condition):
+
+    def __init__(self, target, offset=0.0, check_greater=True, reference=None):
+        super().__init__(target)
+        if reference is not None:
+            self.references.append(reference)
+        self.check_greater = check_greater
+        self.offset = offset
+            
+            
+    def check(self):
+        ref_offset = 0.0
+        if len(self.references) > 0:
+           ref_offset = self.references[0].state[0]
+       
+        if self.check_greater:
+            return (self.target.state[0] > (ref_offset + self.offset))
+        else:
+            return (self.target.state[0] < (ref_offset + self.offset))
 
 
 

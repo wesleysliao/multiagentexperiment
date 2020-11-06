@@ -165,7 +165,7 @@ class MultiAgentTask:
     TASK_COMPLETED = 2
     TASK_FAILED = 3
     
-    def __init__(self, name, duration, datafolder, timestep):
+    def __init__(self, name, datafolder, timestep, duration=None):
     
         self.name = name
 
@@ -173,7 +173,7 @@ class MultiAgentTask:
         self.dynamic_objects = []
         self.constraints = []
         self.reference_trajectories = []
-        self.handles = []
+        self.endconditions = []
 
         self.experimenttime = None
         
@@ -195,6 +195,10 @@ class MultiAgentTask:
 
     def add_ref(self, reference_trajectory):
         self.reference_trajectories.append(reference_trajectory)
+        
+    
+    def add_endcond(self, condition):
+        self.endconditions.append(condition)
        
 
     def reset(self):
@@ -228,10 +232,15 @@ class MultiAgentTask:
         self.time += self.timestep
         self.experimenttime = experimenttime
         
-        if self.time >= self.duration:
+        
+        if self.duration is not None and self.time >= self.duration:
             self.taskstate = self.TASK_COMPLETED
         else:
             self.taskstate = self.TASK_RUNNING
+            
+        for endcondition in self.endconditions:
+            if endcondition.check():
+                self.taskstate = self.TASK_COMPLETED
         
         state = self.get_state_dict()
         
@@ -345,31 +354,46 @@ class MultiAgentExperiment:
         
     def assign(self):
 
-        for task in self.procedure:
-            
-            for ndx, role in enumerate(task.roles):
-                role.assign(self.participants[ndx])
-                
-        self.active_task = self.procedure[0]
-        self.active_task.start()
+        for trial in self.procedure:
+            print(len(trial))
+            participant_ndx = 0
+            for task in trial:
+                print(task.name, "roles:", len(task.roles), "participant:", end=" ")
+                for role in task.roles:
+                    print(participant_ndx, end=" ")
+                    role.assign(self.participants[participant_ndx])
+                    participant_ndx += 1
+                print()
+        self.active_trial = self.procedure[0]
+        for task in self.active_trial:
+            task.start()
 
 
     def step(self, dt):
     
         self.time += dt
     
-        taskstate = self.active_task.step(self.time)
+        complete_tasks = 0
+        for task in self.active_trial:
+            taskstate = task.step(self.time)
         
-        if taskstate == MultiAgentTask.TASK_COMPLETED:
-            taskindex = self.procedure.index(self.active_task)
-            self.active_task.close()
+            if taskstate == MultiAgentTask.TASK_COMPLETED:
+               complete_tasks += 1
+               
+        if complete_tasks == len(self.active_trial): #all tasks done
+            trialindex = self.procedure.index(self.active_trial)
             
-            if (len(self.procedure) > taskindex + 1):
-                self.active_task = self.procedure[taskindex + 1]
-                self.active_task.start()
+            for task in self.active_trial:
+                task.close()
+            
+            if (len(self.procedure) >  trialindex + 1):
+                self.active_trial = self.procedure[trialindex + 1]
+                    
+                for task in self.active_trial:
+                    task.start()
             else:
                self.completed()
-    
+        
     def completed(self):
         pass
 
