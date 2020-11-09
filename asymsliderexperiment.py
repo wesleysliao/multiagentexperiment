@@ -6,7 +6,7 @@ import numpy as np
 
 import pyglet
 
-from dynamicobject import DynamicObject, SpringLawSolid, BindPosition, PositionLimits, PositionThreshold
+from dynamicobject import DynamicObject, Damping, SpringLawSolid, BindPosition, PositionLimits, PositionThreshold
 from humanfalconparticipant import HumanFalconParticipant
 from multiagentexperiment import Role, Participant, Perspective, FlippedPerspective, ReferenceTrajectory, MultiAgentTask, MultiAgentExperiment
 
@@ -58,6 +58,17 @@ class FlippedHiddenObjectsPerspective(FlippedPerspective):
          
 
 
+class BlankTask(MultiAgentTask):
+
+    def __init__(self, name, timestep, datafolder=None, duration=None):
+        super().__init__(name, timestep, datafolder=datafolder, duration=duration)
+        
+        handle_obj = DynamicObject("handle", 0.0)
+        self.add_obj(handle_obj)
+        self.roles.append(Role(handle_obj))
+
+
+
 class MessageTask(MultiAgentTask):
   
     def __init__(self, name, message, timestep, duration):
@@ -83,7 +94,7 @@ class ResetHandleTask(MessageTask):
                           timestep, None)
                          
         handle_obj = self.dynamic_objects[0]
-        self.add_endcond(PositionThreshold(handle_obj, -0.9, check_greater=False))
+        self.add_endcond(PositionThreshold(handle_obj, -0.8, check_greater=False))
        
        
 
@@ -142,6 +153,7 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
         self.add_constraint(SpringLawSolid(handle_obj, cursor, k, (obj_radius*2)))
         self.add_constraint(SpringLawSolid(cursor, handle_obj, -k*0.9*pull, -(obj_radius * 2)))
         
+        self.add_constraint(Damping(1, cursor))
         
         self.roles.append(Role(handle_obj))
         
@@ -246,6 +258,11 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
         self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, -k*0.9*p2_push, -(obj_radius * 2)))
         self.add_constraint(SpringLawSolid(p2_handle_obj, cursor, -k, -(obj_radius*2)))
         self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, k*0.9*p2_pull, (obj_radius * 2)))
+
+
+        self.add_constraint(Damping(1, cursor))
+
+
         
         self.roles.append(Role(p1_handle_obj, 
                                perspective=HiddenObjectsPerspective(["p2_handle_draw",
@@ -262,29 +279,33 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
     def __init__(self):
         super().__init__("AsymDyadSlider")
         
-        self.timestep = 1.0 / 120.0
-        
+        self.timestep = 1.0 / 60.0
+
+
+        #self.procedure.append([BlankTask("blank1", self.timestep, datafolder=self.datafolder, duration=10.0),
+        #                       BlankTask("blank2", self.timestep, datafolder=self.datafolder, duration=10.0)])        
+
         self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.timestep, 3.0),
                                MessageTask("msgwelcome2", "Welcome to the Experiment 2", self.timestep, 3.0)])
         
         self.procedure.append([ResetHandleTask("0-reset1", self.timestep),
                                ResetHandleTask("0-reset2",  self.timestep)])                      
-        self.procedure.append([SoloAsymForceTrackingTask("0-solo1", self.timestep, self.datafolder, 20.0, k=10.0, push=0.5, pull=1.0),
-                               SoloAsymForceTrackingTask("0-solo2", self.timestep, self.datafolder, 20.0, k=10.0, push=1.0, pull=0.5)])
+        self.procedure.append([SoloAsymForceTrackingTask("0-solo1", self.timestep, self.datafolder, 5.0, k=5.0, push=1.0, pull=1.0),
+                               SoloAsymForceTrackingTask("0-solo2", self.timestep, self.datafolder, 5.0, k=5.0, push=1.0, pull=1.0)])
         
         self.procedure.append([ResetHandleTask("1-reset1", self.timestep),
                                ResetHandleTask("1-reset2", self.timestep)])              
         self.procedure.append([DyadAsymForceTrackingTask("1-dyad", self.timestep, self.datafolder, 20.0, 
-                               k=10.0, 
-                               p1_push=1.0, p1_pull=0.5, 
-                               p2_push=1.0, p2_pull=0.5)])
+                               k=5.0, 
+                               p1_push=1.0, p1_pull=1.0, 
+                               p2_push=1.0, p2_pull=1.0)])
         
         self.procedure.append([ResetHandleTask("2-reset1", self.timestep),
                                ResetHandleTask("2-reset2", self.timestep)])
         self.procedure.append([DyadAsymForceTrackingTask("2-dyad", self.timestep, self.datafolder, 20.0,
-                               k=10.0, 
-                               p1_push=1.0, p1_pull=0.2, 
-                               p2_push=1.0, p2_pull=0.2)])
+                               k=5.0, 
+                               p1_push=1.0, p1_pull=1.0, 
+                               p2_push=1.0, p2_pull=1.0)])
         
         self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 10.0),
                                MessageTask("msgcomplete2", "Experiment Complete. 2", self.timestep, 10.0)])

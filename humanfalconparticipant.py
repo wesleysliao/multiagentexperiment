@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import threading
 from queue import Queue
 
 import pyglet
@@ -12,21 +13,41 @@ from falcon_c.falcon import NovintFalcon
 class FalconHapticHandle(Handle):
 
     def __init__(self, timestep_s, falcon_device_num):
-    
-        self.falcon = NovintFalcon(timestep_s, falcon_device_num)
-        
-        pyglet.clock.schedule_interval(self.falcon.update_state, 0.001)
+
+
+        falcon_timestep_s = 0.008
+        self.falcon = NovintFalcon(falcon_timestep_s, falcon_device_num)
+        self.timestep_s = falcon_timestep_s
+        self.overhead_s = 0.0003
+        #pyglet.clock.schedule_interval(self.update_falcon, falcon_timestep_s)
+        self.count = 0.0
         
         super().__init__()
+
+        self.shutdown = threading.Event()
+        self.shutdown.clear()
+        self.update_falcon()
     
     def get_position(self):
         pos = self.falcon.get_pos()
-        
         return -pos[2]
+
+    def get_velocity(self):
+        vel = self.falcon.get_vel()
+        return -vel[2]
+
+    def update_falcon(self):
+        if not self.shutdown.is_set():
+            next_loop = threading.Timer(self.timestep_s - self.overhead_s, self.update_falcon)
+            next_loop.start()
+ 
+        self.falcon.add_force(0, 0, self.force)
+        self.falcon.output_forces()
+
+        self.falcon.update_state()
+        self.count += 1
         
     def update_force(self, force):
-        self.falcon.add_force(0, 0, -force)
-        self.falcon.output_forces()
         super().update_force(-force)
     
 

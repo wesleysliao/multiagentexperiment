@@ -30,6 +30,8 @@ class Role:
     def get_positions(self, task_state):
         self.participant.get_action(self.perspective.task_to_view(task_state))
         self.handle_object.state[0] = self.perspective.handle_to_task(self.participant.handle.get_position())
+        self.handle_object.state[1] = 0 #self.perspective.handle_to_task(self.participant.handle.get_velocity())
+        self.handle_object.state[2] = 0
             
     def update_forces(self):
         force = self.perspective.task_to_handle(self.handle_object.queued_force)
@@ -110,7 +112,6 @@ class Handle():
 
     def update_force(self, force):
         self.force = force
-
 
 
 class ReferenceTrajectory:
@@ -350,7 +351,7 @@ class MultiAgentExperiment:
         self.datafolder_prefix = datafolder_prefix
 
         time_now = datetime.datetime.now()
-        datetime_str = time_now.strftime("%Y-%b%d-%H%M")
+        datetime_str = time_now.strftime("%Y-%b%d-%H%M%S")
         
         self.datafolder = "./data/" + self.datafolder_prefix + "_" + datetime_str
         
