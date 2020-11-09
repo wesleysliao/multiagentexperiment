@@ -363,7 +363,7 @@ class MultiAgentExperiment:
     def assign(self):
 
         for trial in self.procedure:
-            print(len(trial))
+            print("simultaneous tasks in this trial:", len(trial))
             participant_ndx = 0
             for task in trial:
                 print(task.name, "roles:", len(task.roles), "participant:", end=" ")
