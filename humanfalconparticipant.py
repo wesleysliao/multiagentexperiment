@@ -38,7 +38,10 @@ class FalconHapticHandle(Handle):
 
     def update_falcon(self):
         if not self.shutdown.is_set():
-            next_loop = threading.Timer(self.timestep_s - self.overhead_s, self.update_falcon)
+            next_loop = threading.Timer(
+                self.timestep_s - self.overhead_s, 
+                self.update_falcon)
+                
             next_loop.start()
  
         self.falcon.add_force(0, 0, self.force)
