@@ -90,13 +90,14 @@ class MessageTask(MultiAgentTask):
 class ResetHandleTask(MessageTask):
 
     def __init__(self, name, timestep):
-        super().__init__(name, "Gently pull your handle toward you until the handle stops.", 
-                          timestep, None)
-                         
+        super().__init__(name,
+                         "Gently pull your handle toward you until the handle stops.",
+                         timestep, None)
+
         handle_obj = self.dynamic_objects[0]
         self.add_endcond(PositionThreshold(handle_obj, -0.8, check_greater=False))
-       
-       
+
+
 
 class SoloAsymForceTrackingTask(MultiAgentTask):
    

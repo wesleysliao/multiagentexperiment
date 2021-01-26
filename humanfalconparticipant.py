@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import time
 import threading
 from queue import Queue
 
@@ -12,21 +13,19 @@ from falcon_c.falcon import NovintFalcon
 
 class FalconHapticHandle(Handle):
 
-    def __init__(self, timestep_s, falcon_device_num):
+    def __init__(self, falcon_device_num):
 
-
-        falcon_timestep_s = 0.008
-        self.falcon = NovintFalcon(falcon_timestep_s, falcon_device_num)
-        self.timestep_s = falcon_timestep_s
-        self.overhead_s = 0.0003
-        #pyglet.clock.schedule_interval(self.update_falcon, falcon_timestep_s)
-        self.count = 0.0
+        self.timestep_s = 1.0 / 1000
+        self.falcon = NovintFalcon(self.timestep_s, falcon_device_num)
+        self.io_loop_count = 0
         
         super().__init__()
 
-        self.shutdown = threading.Event()
-        self.shutdown.clear()
-        self.update_falcon()
+        self.shutdown_flag = threading.Event()
+        self.shutdown_flag.clear()
+        falcon_io_loop = threading.Thread(target=self.update_falcon)
+        falcon_io_loop.start()
+
     
     def get_position(self):
         pos = self.falcon.get_pos()
@@ -37,21 +36,33 @@ class FalconHapticHandle(Handle):
         return -vel[2]
 
     def update_falcon(self):
-        if not self.shutdown.is_set():
-            next_loop = threading.Timer(
-                self.timestep_s - self.overhead_s, 
-                self.update_falcon)
-                
-            next_loop.start()
- 
-        self.falcon.add_force(0, 0, self.force)
-        self.falcon.output_forces()
+        start_time = time.monotonic()
+        while not self.shutdown_flag.is_set():
 
-        self.falcon.update_state()
-        self.count += 1
-        
+            while True:
+                elapsed_time = time.monotonic() - start_time
+                expected_loops = elapsed_time / self.timestep_s
+                print(self.io_loop_count / elapsed_time, elapsed_time, expected_loops, self.io_loop_count)
+                if self.io_loop_count > expected_loops:
+                    time.sleep(0.00001)
+                else:
+                    break
+
+            self.falcon.update_state()
+
+            self.falcon.add_force(0, 0, self.force)
+            self.falcon.output_forces()
+
+            self.io_loop_count += 1
+
+
     def update_force(self, force):
         super().update_force(-force)
+
+
+    def shutdown(self):
+        self.shutdown_flag.set()
+        super().shutdown()
     
 
 class HumanFalconParticipant(Participant):
@@ -66,7 +77,7 @@ class HumanFalconParticipant(Participant):
         self.fps_display = pyglet.window.FPSDisplay(window=self.window)
         
         
-        super().__init__(name, FalconHapticHandle(timestep_s, falcon_device_num))
+        super().__init__(name, FalconHapticHandle(falcon_device_num))
     
     
     def on_draw(self):

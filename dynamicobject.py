@@ -34,7 +34,7 @@ class DynamicObject:
 
     def step(self, dt_s):
         self.force = self.queued_force
-        if self.mass != 0.0:
+        if self.mass > 0.0:
             self.state[self.ACC] = (self.force / self.mass)
         self.queued_force = 0.0
         self.state[self.VEL] += self.state[self.ACC] * dt_s

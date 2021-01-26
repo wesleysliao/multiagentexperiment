@@ -98,6 +98,10 @@ class Participant:
         return self.handle.get_position()
 
 
+    def shutdown(self):
+        self.handle.shutdown()
+
+
 
 class Handle():
 
@@ -112,6 +116,10 @@ class Handle():
 
     def update_force(self, force):
         self.force = force
+
+
+    def shutdown(self):
+        pass
 
 
 class ReferenceTrajectory:
@@ -404,20 +412,6 @@ class MultiAgentExperiment:
                self.completed()
         
     def completed(self):
-        pass
 
-
-            
-            
-
-
-
-
-
-
-
-
-
-
-
-
+        for participant in self.participants:
+            participant.shutdown()

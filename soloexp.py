@@ -19,7 +19,7 @@ class SoloSliderExperiment(MultiAgentExperiment):
 
         self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.timestep, 3.0)])
         
-        self.procedure.append([ResetHandleTask("0-reset1", self.timestep)])                      
+        self.procedure.append([ResetHandleTask("0-reset1", self.timestep)])
         self.procedure.append([SoloAsymForceTrackingTask("0-solo1", self.timestep, self.datafolder, 20.0, k=5.0, push=1.0, pull=1.0)])
  
         self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 4.0)])
