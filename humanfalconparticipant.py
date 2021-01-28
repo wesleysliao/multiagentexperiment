@@ -42,7 +42,7 @@ class FalconHapticHandle(Handle):
             while True:
                 elapsed_time = time.monotonic() - start_time
                 expected_loops = elapsed_time / self.timestep_s
-                print(self.io_loop_count / elapsed_time, elapsed_time, expected_loops, self.io_loop_count)
+                #print(self.io_loop_count / elapsed_time, elapsed_time, expected_loops, self.io_loop_count)
                 if self.io_loop_count > expected_loops:
                     time.sleep(0.00001)
                 else:
