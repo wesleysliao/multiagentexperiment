@@ -17,7 +17,6 @@ class FalconHapticHandle(Handle):
 
         self.timestep_s = 1.0 / 1000
         self.falcon = NovintFalcon(self.timestep_s, falcon_device_num)
-        self.io_loop_count = 0
         
         super().__init__()
 
@@ -37,14 +36,15 @@ class FalconHapticHandle(Handle):
 
     def update_falcon(self):
         start_time = time.monotonic()
+        io_loop_count = 0
         while not self.shutdown_flag.is_set():
 
             while True:
                 elapsed_time = time.monotonic() - start_time
-                expected_loops = elapsed_time / self.timestep_s
-                #print(self.io_loop_count / elapsed_time, elapsed_time, expected_loops, self.io_loop_count)
-                if self.io_loop_count > expected_loops:
-                    time.sleep(0.00001)
+                expected_loops = int(elapsed_time / self.timestep_s)
+                if io_loop_count > expected_loops:
+                    sleep_time = (io_loop_count * self.timestep_s) - elapsed_time
+                    time.sleep(sleep_time)
                 else:
                     break
 
@@ -53,7 +53,7 @@ class FalconHapticHandle(Handle):
             self.falcon.add_force(0, 0, self.force)
             self.falcon.output_forces()
 
-            self.io_loop_count += 1
+            io_loop_count += 1
 
 
     def update_force(self, force):
@@ -78,14 +78,14 @@ class HumanFalconParticipant(Participant):
         
         
         super().__init__(name, FalconHapticHandle(falcon_device_num))
+        
+        self.batch = pyglet.graphics.Batch()
     
     
     def on_draw(self):
     
         self.window.clear()
-        batch = pyglet.graphics.Batch()
-        
-        lines = []
+                
         if "reference_trajectories" in self.visible_state:
             for key, value in self.visible_state["reference_trajectories"].items():
                 for point_ndx, point in enumerate(value["full"]):
@@ -96,12 +96,11 @@ class HumanFalconParticipant(Participant):
                     y1 = self.scale + (last_point * self.scale)
                     x2 = self.scale + ((value["timesteps"][point_ndx] - self.visible_state["tasktime"]) * self.scale)
                     y2 = self.scale + (point * self.scale)
-                    lines.append(pyglet.shapes.Line(x1, y1, x2, y2, 
+                    pyglet.shapes.Line(x1, y1, x2, y2, 
                                        width=10, 
-                                       color=(200,200,200),
-                                       batch=batch))
-                    
-        objs = []
+                                       color=(200,200,200)).draw()
+        
+
         if "dynamic_objects" in self.visible_state:
             for key, value in self.visible_state["dynamic_objects"].items():
                 if value["appearance"] is None:
@@ -111,18 +110,16 @@ class HumanFalconParticipant(Participant):
                     y = self.scale + (value["state"][0] * self.scale)
                     radius = self.scale * value["appearance"]["radius"]
                     color = value["appearance"]["color"]
-                    objs.append(pyglet.shapes.Circle(x, y, radius, color=color, batch=batch))
-        
-        batch.draw()
-        self.fps_display.draw()
-        
+                    pyglet.shapes.Circle(x, y, radius, color=color).draw()
+                  
         if "task_message" in self.visible_state:
-            label=pyglet.text.Label(self.visible_state["task_message"],
-                                    font_name="FreeMono", font_size=12,
-                                    x=self.scale, y=self.scale,
-                                    anchor_x="center", anchor_y="center")
-            label.draw()
-        
+            pyglet.text.Label(self.visible_state["task_message"],
+                              font_name="FreeMono", font_size=12,
+                              x=self.scale, y=self.scale,
+                              anchor_x="center", anchor_y="center").draw()
+
+        self.fps_display.draw()
+ 
     
     def get_action(self, visible_state): 
         self.visible_state = visible_state

@@ -1,4 +1,6 @@
 
+import cProfile
+
 import copy
 
 
@@ -13,7 +15,7 @@ from multiagentexperiment import Role, Participant, Perspective, FlippedPerspect
 
 def sos_gen():
     amplitudes = [0.4, 0.3, 0.2, 0.1]
-    frequencies = [0.4, 0.3, 0.2, 0.1]
+    frequencies = [0.8, 0.6, 0.4, 0.2]
     
     a = np.random.permutation(amplitudes)
     f = np.random.permutation(frequencies)
@@ -280,11 +282,14 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
     def __init__(self):
         super().__init__("AsymDyadSlider")
         
-        self.timestep = 1.0 / 60.0
+        self.timestep = 1.0 / 70.0
 
 
-        #self.procedure.append([BlankTask("blank1", self.timestep, datafolder=self.datafolder, duration=10.0),
-        #                       BlankTask("blank2", self.timestep, datafolder=self.datafolder, duration=10.0)])        
+        #hself.procedure.append([BlankTask("blank1", self.timestep, datafolder=self.datafolder, duration=10.0),
+        #                       BlankTask("blank2", self.timestep, datafolder=self.datafolder, duration=10.0)])
+
+
+        duration = 20.0  
 
         self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.timestep, 3.0),
                                MessageTask("msgwelcome2", "Welcome to the Experiment 2", self.timestep, 3.0)])
@@ -296,20 +301,37 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         
         self.procedure.append([ResetHandleTask("1-reset1", self.timestep),
                                ResetHandleTask("1-reset2", self.timestep)])              
-        self.procedure.append([DyadAsymForceTrackingTask("1-dyad", self.timestep, self.datafolder, 20.0, 
+        self.procedure.append([DyadAsymForceTrackingTask("1-dyad", self.timestep, self.datafolder, duration, 
                                k=5.0, 
                                p1_push=1.0, p1_pull=1.0, 
                                p2_push=1.0, p2_pull=1.0)])
-        
+        """
         self.procedure.append([ResetHandleTask("2-reset1", self.timestep),
                                ResetHandleTask("2-reset2", self.timestep)])
-        self.procedure.append([DyadAsymForceTrackingTask("2-dyad", self.timestep, self.datafolder, 20.0,
+        self.procedure.append([DyadAsymForceTrackingTask("2-dyad", self.timestep, self.datafolder, duration,
+                               k=5.0, 
+                               p1_push=0.5, p1_pull=1.0, 
+                               p2_push=0.5, p2_pull=1.0)])
+
+        
+        self.procedure.append([ResetHandleTask("3-reset1", self.timestep),
+                               ResetHandleTask("3-reset2", self.timestep)])
+        self.procedure.append([DyadAsymForceTrackingTask("3-dyad", self.timestep, self.datafolder, duration,
+                               k=5.0, 
+                               p1_push=1.0, p1_pull=0.5, 
+                               p2_push=1.0, p2_pull=0.5)])
+
+        
+        self.procedure.append([ResetHandleTask("4-reset1", self.timestep),
+                               ResetHandleTask("4-reset2", self.timestep)])
+        self.procedure.append([DyadAsymForceTrackingTask("4-dyad", self.timestep, self.datafolder, duration,
                                k=5.0, 
                                p1_push=1.0, p1_pull=1.0, 
-                               p2_push=1.0, p2_pull=1.0)])
+                               p2_push=0.5, p2_pull=0.5)])
         
-        self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 10.0),
-                               MessageTask("msgcomplete2", "Experiment Complete. 2", self.timestep, 10.0)])
+        """
+        self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 5.0),
+                               MessageTask("msgcomplete2", "Experiment Complete. 2", self.timestep, 5.0)])
         
         self.participants.append(HumanFalconParticipant("player1", self.timestep, 0))
         self.participants.append(HumanFalconParticipant("player2", self.timestep, 1))
@@ -328,3 +350,4 @@ if __name__ == "__main__":
     experiment.assign()
     
     pyglet.app.run()
+    #cProfile.run("pyglet.app.run()", sort="tottime")
