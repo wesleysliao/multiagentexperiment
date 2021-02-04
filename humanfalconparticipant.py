@@ -17,6 +17,11 @@ class FalconHapticHandle(Handle):
 
         self.timestep_s = 1.0 / 1000
         self.falcon = NovintFalcon(self.timestep_s, falcon_device_num)
+        if falcon_device_num==0:
+            self.falcon.set_leds(0, 1, 0)
+        elif falcon_device_num==1:
+            self.falcon.set_leds(0, 0, 1)
+            
         
         super().__init__()
 
@@ -69,8 +74,16 @@ class HumanFalconParticipant(Participant):
     
     def __init__(self, name, timestep_s, falcon_device_num):
         
-        self.scale = 320
-        self.window = pyglet.window.Window(2 * self.scale, 2 * self.scale)
+        display = pyglet.canvas.get_display()
+        screen = display.get_screens()[falcon_device_num]
+        self.window = pyglet.window.Window(screen.width, screen.height, 
+                                           screen=screen,
+                                           style=pyglet.window.Window.WINDOW_STYLE_BORDERLESS)
+        self.window.set_location(screen.x, screen.y)
+        
+        window_size = self.window.get_size()
+        self.scale = window_size[0] / 2;
+        self.offset = (0, (window_size[1] / 2) - self.scale)
     
         self.visible_state = {}
         self.window.on_draw = self.on_draw
@@ -79,8 +92,7 @@ class HumanFalconParticipant(Participant):
         
         super().__init__(name, FalconHapticHandle(falcon_device_num))
         
-        self.batch = pyglet.graphics.Batch()
-    
+       
     
     def on_draw(self):
     
@@ -92,10 +104,10 @@ class HumanFalconParticipant(Participant):
                     if point_ndx == 0:
                         continue
                     last_point = value["full"][point_ndx - 1]
-                    x1 = self.scale + ((value["timesteps"][point_ndx - 1] - self.visible_state["tasktime"]) * self.scale)
-                    y1 = self.scale + (last_point * self.scale)
-                    x2 = self.scale + ((value["timesteps"][point_ndx] - self.visible_state["tasktime"]) * self.scale)
-                    y2 = self.scale + (point * self.scale)
+                    x1 = self.offset[0] + self.scale + ((value["timesteps"][point_ndx - 1] - self.visible_state["tasktime"]) * self.scale)
+                    y1 = self.offset[1] + self.scale + (last_point * self.scale)
+                    x2 = self.offset[0] + self.scale + ((value["timesteps"][point_ndx] - self.visible_state["tasktime"]) * self.scale)
+                    y2 = self.offset[1] + self.scale + (point * self.scale)
                     pyglet.shapes.Line(x1, y1, x2, y2, 
                                        width=10, 
                                        color=(200,200,200)).draw()
@@ -106,8 +118,8 @@ class HumanFalconParticipant(Participant):
                 if value["appearance"] is None:
                     continue
                 if value["appearance"]["shape"] == "circle":
-                    x = self.scale
-                    y = self.scale + (value["state"][0] * self.scale)
+                    x = self.offset[0] + self.scale
+                    y = self.offset[1] + self.scale + (value["state"][0] * self.scale)
                     radius = self.scale * value["appearance"]["radius"]
                     color = value["appearance"]["color"]
                     pyglet.shapes.Circle(x, y, radius, color=color).draw()
@@ -115,7 +127,8 @@ class HumanFalconParticipant(Participant):
         if "task_message" in self.visible_state:
             pyglet.text.Label(self.visible_state["task_message"],
                               font_name="FreeMono", font_size=12,
-                              x=self.scale, y=self.scale,
+                              x= self.offset[0] + self.scale, 
+                              y= self.offset[1] + self.scale,
                               anchor_x="center", anchor_y="center").draw()
 
         self.fps_display.draw()

@@ -289,23 +289,23 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         #                       BlankTask("blank2", self.timestep, datafolder=self.datafolder, duration=10.0)])
 
 
-        duration = 20.0  
+        duration = 60.0  
 
         self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.timestep, 3.0),
                                MessageTask("msgwelcome2", "Welcome to the Experiment 2", self.timestep, 3.0)])
-        
+        """
         self.procedure.append([ResetHandleTask("0-reset1", self.timestep),
                                ResetHandleTask("0-reset2",  self.timestep)])                      
         self.procedure.append([SoloAsymForceTrackingTask("0-solo1", self.timestep, self.datafolder, 5.0, k=5.0, push=1.0, pull=1.0),
                                SoloAsymForceTrackingTask("0-solo2", self.timestep, self.datafolder, 5.0, k=5.0, push=1.0, pull=1.0)])
-        
+        """
         self.procedure.append([ResetHandleTask("1-reset1", self.timestep),
                                ResetHandleTask("1-reset2", self.timestep)])              
         self.procedure.append([DyadAsymForceTrackingTask("1-dyad", self.timestep, self.datafolder, duration, 
                                k=5.0, 
                                p1_push=1.0, p1_pull=1.0, 
                                p2_push=1.0, p2_pull=1.0)])
-        """
+        
         self.procedure.append([ResetHandleTask("2-reset1", self.timestep),
                                ResetHandleTask("2-reset2", self.timestep)])
         self.procedure.append([DyadAsymForceTrackingTask("2-dyad", self.timestep, self.datafolder, duration,
@@ -329,7 +329,7 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
                                p1_push=1.0, p1_pull=1.0, 
                                p2_push=0.5, p2_pull=0.5)])
         
-        """
+        
         self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 5.0),
                                MessageTask("msgcomplete2", "Experiment Complete. 2", self.timestep, 5.0)])
         
@@ -349,5 +349,5 @@ if __name__ == "__main__":
     experiment = AsymmetricDyadSliderExperiment()
     experiment.assign()
     
-    pyglet.app.run()
-    #cProfile.run("pyglet.app.run()", sort="tottime")
+    #pyglet.app.run()
+    cProfile.run("pyglet.app.run()", sort="tottime")
