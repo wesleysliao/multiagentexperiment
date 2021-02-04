@@ -251,16 +251,17 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
         self.add_constraint(BindPosition(p2_handle_draw, p2_handle_obj))
         self.add_constraint(PositionLimits(p2_handle_draw, neg=(2 * obj_radius), reference=cursor))
         
+        
         self.add_constraint(SpringLawSolid(p1_handle_obj, cursor, -k, -(obj_radius * 2)))
-        self.add_constraint(SpringLawSolid(cursor, p1_handle_obj, k*0.9*p1_push, (obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(cursor, p1_handle_obj, k*p1_push, (obj_radius * 2)))
         self.add_constraint(SpringLawSolid(p1_handle_obj, cursor, k, (obj_radius * 2)))
-        self.add_constraint(SpringLawSolid(cursor, p1_handle_obj, -k*0.9*p1_pull, -(obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(cursor, p1_handle_obj, -k*p1_pull, -(obj_radius * 2)))
         
         
         self.add_constraint(SpringLawSolid(p2_handle_obj, cursor, k, (obj_radius*2)))
-        self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, -k*0.9*p2_push, -(obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, -k*p2_push, -(obj_radius * 2)))
         self.add_constraint(SpringLawSolid(p2_handle_obj, cursor, -k, -(obj_radius*2)))
-        self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, k*0.9*p2_pull, (obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, k*p2_pull, (obj_radius * 2)))
 
 
         self.add_constraint(Damping(1, cursor))
@@ -289,7 +290,8 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         #                       BlankTask("blank2", self.timestep, datafolder=self.datafolder, duration=10.0)])
 
 
-        duration = 60.0  
+        duration = 60.0
+        k = 5.0
 
         self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.timestep, 3.0),
                                MessageTask("msgwelcome2", "Welcome to the Experiment 2", self.timestep, 3.0)])
@@ -302,14 +304,14 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         self.procedure.append([ResetHandleTask("1-reset1", self.timestep),
                                ResetHandleTask("1-reset2", self.timestep)])              
         self.procedure.append([DyadAsymForceTrackingTask("1-dyad", self.timestep, self.datafolder, duration, 
-                               k=5.0, 
+                               k=k, 
                                p1_push=1.0, p1_pull=1.0, 
                                p2_push=1.0, p2_pull=1.0)])
         
         self.procedure.append([ResetHandleTask("2-reset1", self.timestep),
                                ResetHandleTask("2-reset2", self.timestep)])
         self.procedure.append([DyadAsymForceTrackingTask("2-dyad", self.timestep, self.datafolder, duration,
-                               k=5.0, 
+                               k=k, 
                                p1_push=0.5, p1_pull=1.0, 
                                p2_push=0.5, p2_pull=1.0)])
 
@@ -317,7 +319,7 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         self.procedure.append([ResetHandleTask("3-reset1", self.timestep),
                                ResetHandleTask("3-reset2", self.timestep)])
         self.procedure.append([DyadAsymForceTrackingTask("3-dyad", self.timestep, self.datafolder, duration,
-                               k=5.0, 
+                               k=k, 
                                p1_push=1.0, p1_pull=0.5, 
                                p2_push=1.0, p2_pull=0.5)])
 
@@ -325,7 +327,7 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         self.procedure.append([ResetHandleTask("4-reset1", self.timestep),
                                ResetHandleTask("4-reset2", self.timestep)])
         self.procedure.append([DyadAsymForceTrackingTask("4-dyad", self.timestep, self.datafolder, duration,
-                               k=5.0, 
+                               k=k, 
                                p1_push=1.0, p1_pull=1.0, 
                                p2_push=0.5, p2_pull=0.5)])
         
