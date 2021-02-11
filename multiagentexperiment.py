@@ -179,6 +179,7 @@ class MultiAgentTask:
 
         self.roles = []
         self.dynamic_objects = []
+        self.pre_constraints = []
         self.constraints = []
         self.reference_trajectories = []
         self.endconditions = []
@@ -200,6 +201,8 @@ class MultiAgentTask:
     def add_constraint(self, constraint):
         self.constraints.append(constraint)
 
+    def add_pre_constraint(self, constraint):
+        self.pre_constraints.append(constraint)
 
     def add_ref(self, reference_trajectory):
         self.reference_trajectories.append(reference_trajectory)
@@ -256,6 +259,9 @@ class MultiAgentTask:
         
         for ref_traj in self.reference_trajectories:
             ref_traj.update(self.time)
+            
+        for constraint in self.pre_constraints:
+            constraint.apply()
         
         for role in self.roles:
             role.get_positions(state)

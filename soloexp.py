@@ -15,7 +15,7 @@ class SoloSliderExperiment(MultiAgentExperiment):
     def __init__(self):
         super().__init__("SoloSlider")
         
-        self.timestep = 1.0 / 120.0
+        self.timestep = 1.0 / 60.0
 
         self.procedure.append([MessageTask("msgwelcome1", "Welcome to the Experiment 1", self.timestep, 3.0)])
         
@@ -24,7 +24,7 @@ class SoloSliderExperiment(MultiAgentExperiment):
  
         self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 4.0)])
         
-        self.participants.append(HumanFalconParticipant("subject", self.timestep, 0))
+        self.participants.append(HumanFalconParticipant("subject", self.timestep, 1))
        
         pyglet.clock.schedule_interval(self.step, self.timestep)
     

@@ -123,6 +123,21 @@ class HumanFalconParticipant(Participant):
                     radius = self.scale * value["appearance"]["radius"]
                     color = value["appearance"]["color"]
                     pyglet.shapes.Circle(x, y, radius, color=color).draw()
+                
+                elif value["appearance"]["shape"] == "rectangle":
+                
+                    width = self.scale * value["appearance"]["width"]
+                    height = self.scale * value["appearance"]["height"]
+                    x = self.offset[0] + self.scale - (width / 2.0)
+                    y = self.offset[1] + self.scale  - (height / 2.0) + (value["state"][0] * self.scale)
+                    color = value["appearance"]["color"]
+                    border = 0.0
+                    if "border" in value["appearance"]:
+                        border = self.scale * value["appearance"]["border"]
+                    border_color = color
+                    if "border_color" in value["appearance"]:
+                        border_color = value["appearance"]["border_color"]
+                    pyglet.shapes.BorderedRectangle(x, y, width, height, border=border, color=color, border_color=border_color).draw()
                   
         if "task_message" in self.visible_state:
             pyglet.text.Label(self.visible_state["task_message"],

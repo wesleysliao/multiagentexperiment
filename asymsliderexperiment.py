@@ -13,18 +13,23 @@ from humanfalconparticipant import HumanFalconParticipant
 from multiagentexperiment import Role, Participant, Perspective, FlippedPerspective, ReferenceTrajectory, MultiAgentTask, MultiAgentExperiment
 
 
-def sos_gen():
-    amplitudes = [0.4, 0.3, 0.2, 0.1]
-    frequencies = [0.8, 0.6, 0.4, 0.2]
+def sos_gen(soft_start_s=5.0):
+
+    frequencies = np.array([1.7, 1.3, 1.1, 0.7, 0.5])
+    amplitudes = 1.0 / frequencies
+    amplitudes /= np.sum(amplitudes)
     
-    a = np.random.permutation(amplitudes)
-    f = np.random.permutation(frequencies)
+    order = np.random.permutation(np.arange(len(frequencies)))
+    a = amplitudes[order]
+    f = frequencies[order]
     p = np.random.random(size=a.size) * 2.0 * np.pi
     
     def sos_fn(t):
         result = 0
         for i in range(len(amplitudes)):
             result += (a[i] * np.sin(f[i] * np.pi * (t + p[i])))
+            
+        result *= 1.0 - (np.maximum(soft_start_s - t, 0.0) / soft_start_s)
         return result
         
     return sos_fn
@@ -109,6 +114,7 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
         self.add_ref(ReferenceTrajectory("sos", trajectory_function = sos_gen()))
         
         obj_radius = 0.05
+        rest_length = obj_radius * 4
         
         cursor_color = (220, 220, 220)
         self_color = (0,0,255)
@@ -147,14 +153,14 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
         self.add_constraint(BindPosition(self_contact_obj, cursor, offset=-obj_radius))
         
         self.add_constraint(BindPosition(handle_draw, handle_obj))
-        self.add_constraint(PositionLimits(handle_draw, pos=-(2 * obj_radius), reference=cursor))
+        self.add_constraint(PositionLimits(handle_draw, pos=-rest_length, reference=cursor))
 
 
-        self.add_constraint(SpringLawSolid(handle_obj, cursor, -k, -(obj_radius * 2)))
-        self.add_constraint(SpringLawSolid(cursor, handle_obj, k*0.9*push, (obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(handle_obj, cursor, -k, -rest_length))
+        self.add_constraint(SpringLawSolid(cursor, handle_obj, k*0.9*push, rest_length))
         
-        self.add_constraint(SpringLawSolid(handle_obj, cursor, k, (obj_radius*2)))
-        self.add_constraint(SpringLawSolid(cursor, handle_obj, -k*0.9*pull, -(obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(handle_obj, cursor, k, rest_length))
+        self.add_constraint(SpringLawSolid(cursor, handle_obj, -k*0.9*pull, -rest_length))
         
         self.add_constraint(Damping(1, cursor))
         
@@ -171,6 +177,7 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
         self.add_ref(ReferenceTrajectory("sos", trajectory_function = sos_gen()))
         
         obj_radius = 0.05
+        rest_length = obj_radius * 4
         
         cursor_color = (220, 220, 220)
         self_color = (0,0,255)
@@ -197,8 +204,9 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
         
         cursor = DynamicObject("cursor", 0.1, 
                                initial_state=[0.0, 0.0, 0.0],
-                               appearance={"shape":"circle", 
-                                           "radius":obj_radius, 
+                               appearance={"shape":"rectangle", 
+                                           "width":obj_radius * 3.0,
+                                           "height":obj_radius * 1.0, 
                                            "color":cursor_color})
         
         p1_self_contact_obj = DynamicObject("p1_self_contact", 0.0, 
@@ -241,27 +249,27 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
         self.add_obj(p1_handle_draw)
         self.add_obj(p2_handle_draw)
         
-        self.add_constraint(BindPosition(p1_self_contact_obj, cursor, offset=-obj_radius))
-        self.add_constraint(BindPosition(p1_other_contact_obj, cursor, offset=obj_radius)) 
-        self.add_constraint(BindPosition(p2_self_contact_obj, cursor, offset=obj_radius))
-        self.add_constraint(BindPosition(p2_other_contact_obj, cursor, offset=-obj_radius))
+        self.add_pre_constraint(BindPosition(p1_self_contact_obj, cursor, offset=-obj_radius))
+        self.add_pre_constraint(BindPosition(p1_other_contact_obj, cursor, offset=obj_radius)) 
+        self.add_pre_constraint(BindPosition(p2_self_contact_obj, cursor, offset=obj_radius))
+        self.add_pre_constraint(BindPosition(p2_other_contact_obj, cursor, offset=-obj_radius))
         
         self.add_constraint(BindPosition(p1_handle_draw, p1_handle_obj))
-        self.add_constraint(PositionLimits(p1_handle_draw, pos=-(2 * obj_radius), reference=cursor))
+        self.add_constraint(PositionLimits(p1_handle_draw, pos=-rest_length, reference=cursor))
         self.add_constraint(BindPosition(p2_handle_draw, p2_handle_obj))
-        self.add_constraint(PositionLimits(p2_handle_draw, neg=(2 * obj_radius), reference=cursor))
+        self.add_constraint(PositionLimits(p2_handle_draw, neg=rest_length, reference=cursor))
         
         
-        self.add_constraint(SpringLawSolid(p1_handle_obj, cursor, -k, -(obj_radius * 2)))
-        self.add_constraint(SpringLawSolid(cursor, p1_handle_obj, k*p1_push, (obj_radius * 2)))
-        self.add_constraint(SpringLawSolid(p1_handle_obj, cursor, k, (obj_radius * 2)))
-        self.add_constraint(SpringLawSolid(cursor, p1_handle_obj, -k*p1_pull, -(obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(p1_handle_obj, cursor, -k, -rest_length))
+        self.add_constraint(SpringLawSolid(cursor, p1_handle_obj, k*p1_push, rest_length))
+        self.add_constraint(SpringLawSolid(p1_handle_obj, cursor, k, rest_length))
+        self.add_constraint(SpringLawSolid(cursor, p1_handle_obj, -k*p1_pull, -rest_length))
         
         
-        self.add_constraint(SpringLawSolid(p2_handle_obj, cursor, k, (obj_radius*2)))
-        self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, -k*p2_push, -(obj_radius * 2)))
-        self.add_constraint(SpringLawSolid(p2_handle_obj, cursor, -k, -(obj_radius*2)))
-        self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, k*p2_pull, (obj_radius * 2)))
+        self.add_constraint(SpringLawSolid(p2_handle_obj, cursor, k, rest_length))
+        self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, -k*p2_push, -rest_length))
+        self.add_constraint(SpringLawSolid(p2_handle_obj, cursor, -k, -rest_length))
+        self.add_constraint(SpringLawSolid(cursor, p2_handle_obj, k*p2_pull, rest_length))
 
 
         self.add_constraint(Damping(1, cursor))
@@ -284,10 +292,6 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
         super().__init__("AsymDyadSlider")
         
         self.timestep = 1.0 / 70.0
-
-
-        #hself.procedure.append([BlankTask("blank1", self.timestep, datafolder=self.datafolder, duration=10.0),
-        #                       BlankTask("blank2", self.timestep, datafolder=self.datafolder, duration=10.0)])
 
 
         duration = 60.0
