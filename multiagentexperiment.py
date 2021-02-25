@@ -7,9 +7,6 @@ import os
 
 import numpy as np
 
-from dynamicobject import DynamicObject, Damping, CompressionSpring, TensionSpring, BindPosition, PositionLimits
-
-
 
 class Role:
 
@@ -18,25 +15,23 @@ class Role:
             self.perspective = Perspective()
         else:
             self.perspective = perspective
-            
+
         self.participant = None
         self.handle_object = handle_object
-
 
     def assign(self, participant):
         self.participant = participant
 
-
     def get_positions(self, task_state):
         self.participant.get_action(self.perspective.task_to_view(task_state))
-        self.handle_object.state[0] = self.perspective.handle_to_task(self.participant.handle.get_position())
-        self.handle_object.state[1] = 0 #self.perspective.handle_to_task(self.participant.handle.get_velocity())
+        self.handle_object.state[0] = self.perspective.handle_to_task(
+                                        self.participant.handle.get_position())
+        self.handle_object.state[1] = 0
         self.handle_object.state[2] = 0
-            
+
     def update_forces(self):
         force = self.perspective.task_to_handle(self.handle_object.queued_force)
         self.participant.handle.update_force(force)
-
 
 
 class Perspective:
@@ -44,30 +39,25 @@ class Perspective:
     def task_to_handle(self, force):
         return force
 
-        
     def handle_to_task(self, position):
         return position
 
-        
     def task_to_view(self, task_state):
         perspective_state = task_state
         return perspective_state
-
 
 
 class FlippedPerspective(Perspective):
 
     def task_to_handle(self, force):
         return -force
-        
-        
+
     def handle_to_task(self, position):
         return -position
-        
-        
+
     def task_to_view(self, task_state):
         perspective_state = copy.deepcopy(task_state)
-        
+
         if "dynamic_objects" in perspective_state:
             for key, value in perspective_state["dynamic_objects"].items():
                 state = value["state"]
@@ -83,24 +73,18 @@ class FlippedPerspective(Perspective):
         return perspective_state
 
 
-
 class Participant:
 
     def __init__(self, name, handle):
         self.name = name
         self.handle = handle
 
-
     def get_action(self, visible_state):
-
         self.agent.get_action(visible_state, handle_state)
-
         return self.handle.get_position()
-
 
     def shutdown(self):
         self.handle.shutdown()
-
 
 
 class Handle():
@@ -108,15 +92,12 @@ class Handle():
     def __init__(self):
         self.x = 0.0
         self.force = 0.0
-        
-        
+
     def get_position(self):
         return self.x
 
-
     def update_force(self, force):
         self.force = force
-
 
     def shutdown(self):
         pass
@@ -125,46 +106,47 @@ class Handle():
 class ReferenceTrajectory:
 
     def __init__(self, name,
-                 trajectory_function = lambda x: np.zeros(np.array(x).shape),
-                 tracking_axes = "y",
-                 time_axes = "x",
-                 time_window = [-1.0, 1.0],
-                 timestep = 0.1):
+                 trajectory_function=lambda x: np.zeros(np.array(x).shape),
+                 tracking_axes="y",
+                 time_axes="x",
+                 time_window=[-1.0, 1.0],
+                 timestep=0.1):
         self.name = name
-                
+
         self.trajectory_function = trajectory_function
         self.tracking_axes = tracking_axes
         self.time_axes = time_axes
-        
+
         self.appearance = {}
         self.appearance["time_axes"] = self.time_axes
-        
+
         self.time_window = time_window
         self.timestep = timestep
-        
+
         self.now = 0
         self.update(self.now)
-        
-        
+
     def update(self, time):
         time_past = np.arange(time+self.time_window[0], time, self.timestep)
         self.past = self.trajectory_function(time_past)
-        
+
         self.now = self.trajectory_function(time)
-        
-        time_future = np.linspace(time, time+self.time_window[1], int(self.time_window[1]/self.timestep), endpoint=True)
+
+        time_future = np.linspace(time,
+                                  time+self.time_window[1],
+                                  int(self.time_window[1]/self.timestep),
+                                  endpoint=True)
         self.future = self.trajectory_function(time_future)
-                                                         
+
         self.full = []
         self.full.extend(self.past)
         self.full.extend([self.now])
         self.full.extend(self.future)
-        
+
         self.timesteps = []
         self.timesteps.extend(time_past)
         self.timesteps.extend([time])
         self.timesteps.extend(time_future)
-
 
 
 class MultiAgentTask:
@@ -172,10 +154,19 @@ class MultiAgentTask:
     TASK_RUNNING = 1
     TASK_COMPLETED = 2
     TASK_FAILED = 3
-    
-    def __init__(self, name, timestep, datafolder=None, duration=None):
-    
+
+    def __init__(self,
+                 name,
+                 timestep,
+                 datafolder=None,
+                 duration=None,
+                 parameters={}):
+
         self.name = name
+
+        self.parameters = parameters
+        self.parameters["name"] = name
+        self.parameters["duration"] = duration
 
         self.roles = []
         self.dynamic_objects = []
@@ -193,10 +184,8 @@ class MultiAgentTask:
         self.duration = duration
         self.reset()
 
-
     def add_obj(self, dynamicobject):
         self.dynamic_objects.append(dynamicobject)
-
 
     def add_constraint(self, constraint):
         self.constraints.append(constraint)
@@ -222,43 +211,51 @@ class MultiAgentTask:
             time_now = datetime.datetime.now()
             datetime_str = time_now.strftime("%Y-%b%d-%H%M")
 
-            self.filename = self.datafolder + "/" + self.name + "_" + datetime_str
+            self.filename = (self.datafolder + "/"
+                             + self.name + "_" + datetime_str)
             self.datafile = open(self.filename, 'w')
 
+            self.datafile.write("name" + '\t' + self.name + '\n')
+            for key, value in self.parameters.items():
+                if key == "name":
+                    continue
+                self.datafile.write(str(key)+'\t'+str(value)+'\n')
+
             fieldnames = self.get_header()
-            self.datawriter = csv.DictWriter(self.datafile, fieldnames=fieldnames)
+            self.datawriter = csv.DictWriter(self.datafile,
+                                             fieldnames=fieldnames,
+                                             delimiter='\t')
             self.datawriter.writeheader()
 
     def close(self):
         if self.datafolder is not None:
             self.datafile.close()
 
-
     # The experiment is responsible for repeatedly calling step each timestep.
     # the task will assume that the time has elapsed.
-    # This allows for faster than real-time execution for simulated participants.
+    # This allows for faster than real-time execution
+    # for simulated participants.
     def step(self, experimenttime):
         self.time += self.timestep
         self.experimenttime = experimenttime
-        
-        
+
         if self.duration is not None and self.time >= self.duration:
             self.taskstate = self.TASK_COMPLETED
         else:
             self.taskstate = self.TASK_RUNNING
-            
+
         for endcondition in self.endconditions:
-            if endcondition.check():
+            if endcondition.check(self.timestep):
                 self.taskstate = self.TASK_COMPLETED
-        
+
         state = self.get_state_dict()
-        
+
         for ref_traj in self.reference_trajectories:
             ref_traj.update(self.time)
-            
+
         for constraint in self.pre_constraints:
             constraint.apply()
-        
+
         for role in self.roles:
             role.get_positions(state)
 
@@ -267,88 +264,80 @@ class MultiAgentTask:
 
         for role in self.roles:
             role.update_forces()
-            
+
         for dyn_obj in self.dynamic_objects:
             dyn_obj.step(self.timestep)
 
-            
+
         if self.datafolder is not None:
             self.write_data(state)
-        
+
         return self.taskstate
-        
-    
+
     def get_state_dict(self):
-    
         state = {}
-        state["task"] = self.name
         state["taskstate"] = self.taskstate
         state["tasktime"] = self.time
         state["experimenttime"] = self.experimenttime
-        
+
         state["dynamic_objects"] = {}
         for dyn_obj in self.dynamic_objects:
             state["dynamic_objects"][dyn_obj.name] = {}
             state["dynamic_objects"][dyn_obj.name]["state"] = dyn_obj.state
             state["dynamic_objects"][dyn_obj.name]["force"] = dyn_obj.force
-            state["dynamic_objects"][dyn_obj.name]["record"] = dyn_obj.record_data
-            state["dynamic_objects"][dyn_obj.name]["appearance"] = dyn_obj.appearance
-            
+            state["dynamic_objects"][dyn_obj.name]["record"] = \
+                dyn_obj.record_data
+            state["dynamic_objects"][dyn_obj.name]["appearance"] = \
+                dyn_obj.appearance
+
         state["reference_trajectories"] = {}
         for ref_traj in self.reference_trajectories:
             state["reference_trajectories"][ref_traj.name] = {}
-            state["reference_trajectories"][ref_traj.name]["full"] = ref_traj.full
-            state["reference_trajectories"][ref_traj.name]["timesteps"] = ref_traj.timesteps
-            state["reference_trajectories"][ref_traj.name]["now"] = ref_traj.now
-                                  
+            state["reference_trajectories"][ref_traj.name]["full"] = \
+                ref_traj.full
+            state["reference_trajectories"][ref_traj.name]["timesteps"] = \
+                ref_traj.timesteps
+            state["reference_trajectories"][ref_traj.name]["now"] = \
+                ref_traj.now
+
         return state
-        
+
     def get_header(self):
         fieldnames = []
-        
-        fieldnames.append("task")
+
         fieldnames.append("taskstate")
         fieldnames.append("tasktime")
         fieldnames.append("experimenttime")
-        fieldnames.append("task")
-        
+
         for dyn_obj in self.dynamic_objects:
             if dyn_obj.record_data:
                 fieldnames.append("object_"+dyn_obj.name+"_pos")
                 fieldnames.append("object_"+dyn_obj.name+"_vel")
                 fieldnames.append("object_"+dyn_obj.name+"_acc")
                 fieldnames.append("object_"+dyn_obj.name+"_force")
-            
-            
-        
+
         for ref_traj in self.reference_trajectories:
             fieldnames.append("reference_"+ref_traj.name+"_now")
-            
-            
+
         return fieldnames
-        
+
     def write_data(self, state_dict):
-    
         data = {}
-        data["task"] = state_dict["task"]
         data["taskstate"] = state_dict["taskstate"]
         data["tasktime"] = state_dict["tasktime"]
         data["experimenttime"] = state_dict["experimenttime"]
-    
+
         for key, value in state_dict["dynamic_objects"].items():
             if value["record"]:
                 data["object_"+key+"_pos"] = value["state"][0]
                 data["object_"+key+"_vel"] = value["state"][1]
                 data["object_"+key+"_acc"] = value["state"][2]
                 data["object_"+key+"_force"] = value["force"]
-            
-        
+
         for key, value in state_dict["reference_trajectories"].items():
             data["reference_"+key+"_now"] = value["now"]
-            
-        
-        self.datawriter.writerow(data)
 
+        self.datawriter.writerow(data)
 
 
 class MultiAgentExperiment:
@@ -362,15 +351,14 @@ class MultiAgentExperiment:
 
         time_now = datetime.datetime.now()
         datetime_str = time_now.strftime("%Y-%b%d-%H%M%S")
-        
+
         self.datafolder = "./data/" + self.datafolder_prefix + "_" + datetime_str
-        
+
         os.mkdir(self.datafolder)
         print(self.datafolder)
-        
+
         self.time = 0.0
-        
-        
+
     def assign(self):
 
         for trial in self.procedure:
@@ -389,30 +377,31 @@ class MultiAgentExperiment:
 
 
     def step(self, dt):
-    
+
         self.time += dt
-    
+
         complete_tasks = 0
         for task in self.active_trial:
             taskstate = task.step(self.time)
-        
+
             if taskstate == MultiAgentTask.TASK_COMPLETED:
-               complete_tasks += 1
-               
-        if complete_tasks == len(self.active_trial): #all tasks done
+                complete_tasks += 1
+
+        if complete_tasks == len(self.active_trial):
+            # all tasks done
             trialindex = self.procedure.index(self.active_trial)
-            
+
             for task in self.active_trial:
                 task.close()
-            
-            if (len(self.procedure) >  trialindex + 1):
+
+            if (len(self.procedure) > trialindex + 1):
                 self.active_trial = self.procedure[trialindex + 1]
-                    
+
                 for task in self.active_trial:
                     task.start()
             else:
-               self.completed()
-        
+                self.completed()
+
     def completed(self):
 
         for participant in self.participants:
