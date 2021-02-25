@@ -1,4 +1,5 @@
 
+import cProfile
 import copy
 
 
@@ -24,7 +25,7 @@ class SoloSliderExperiment(MultiAgentExperiment):
  
         self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 4.0)])
         
-        self.participants.append(HumanFalconParticipant("subject", self.timestep, 1))
+        self.participants.append(HumanFalconParticipant("subject", self.timestep, 0))
        
         pyglet.clock.schedule_interval(self.step, self.timestep)
     
@@ -39,4 +40,4 @@ if __name__ == "__main__":
     experiment = SoloSliderExperiment()
     experiment.assign()
     
-    pyglet.app.run()
+    cProfile.run("pyglet.app.run()", sort="tottime")

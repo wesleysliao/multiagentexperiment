@@ -206,11 +206,9 @@ class MultiAgentTask:
 
     def add_ref(self, reference_trajectory):
         self.reference_trajectories.append(reference_trajectory)
-        
-    
+
     def add_endcond(self, condition):
         self.endconditions.append(condition)
-       
 
     def reset(self):
         self.time = 0.0
@@ -219,20 +217,18 @@ class MultiAgentTask:
         for dyn_obj in self.dynamic_objects:
             dyn_obj.reset()
 
-
     def start(self):
         if self.datafolder is not None:
             time_now = datetime.datetime.now()
             datetime_str = time_now.strftime("%Y-%b%d-%H%M")
-            
+
             self.filename = self.datafolder + "/" + self.name + "_" + datetime_str
             self.datafile = open(self.filename, 'w')
-            
+
             fieldnames = self.get_header()
             self.datawriter = csv.DictWriter(self.datafile, fieldnames=fieldnames)
             self.datawriter.writeheader()
-        
-        
+
     def close(self):
         if self.datafolder is not None:
             self.datafile.close()
