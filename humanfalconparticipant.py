@@ -145,6 +145,7 @@ class HumanFalconParticipant(Participant):
 
                         stretch = ((4 * end_ref["appearance"]["radius"])
                                   / abs(start_ref["state"][0] - end_ref["state"][0]))
+                        stretch = min(stretch, 2.0)
 
                         middle = stretch * ((start_w + end_w) / 2)
                         x3 = x_center - (middle / 2)

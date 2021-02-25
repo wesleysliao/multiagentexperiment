@@ -226,14 +226,17 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
                                          trajectory_function=sos_gen()))
 
         obj_radius = 0.05
-        rest_length = obj_radius * 4
+        rest_length = obj_radius * 8
 
         cursor_color = (220, 220, 220)
         self_color = (0,0,255)
         link_color = (0, 64, 128)
 
         handle_obj = DynamicObject('handle', 0.0,
-                                   initial_state=[-1.0, 0.0, 0.0])
+                                   initial_state=[-1.0, 0.0, 0.0],
+                                         appearance={'shape': 'circle',
+                                                     'radius': obj_radius/2.0,
+                                                     'color': link_color})
 
         handle_draw = DynamicObject('handle_draw', 0.0,
                                     initial_state=[-1.0, 0.0, 0.0],
@@ -272,10 +275,14 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
         self.add_obj(self_contact_obj)
         self.add_obj(handle_draw)
 
-        self.add_pre_constraint(BindPosition(self_contact_obj, cursor, offset=-obj_radius))
+        self.add_pre_constraint(BindPosition(self_contact_obj,
+                                             cursor,
+                                             offset=-obj_radius))
 
         self.add_constraint(BindPosition(handle_draw, handle_obj))
-        self.add_constraint(PositionLimits(handle_draw, pos=(rest_length/2), reference=cursor))
+        self.add_constraint(PositionLimits(handle_draw,
+                                           pos=-(rest_length/2),
+                                           reference=cursor))
 
         self.add_constraint(SpringLawSolid(handle_obj, cursor,
                                            -k, -rest_length))
