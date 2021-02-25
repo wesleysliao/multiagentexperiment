@@ -7,8 +7,10 @@ import copy
 
 from dynamicobject import \
     BindPosition, \
+    ConditionAND, \
     Damping, \
     DynamicObject, \
+    InRangeForDuration, \
     PositionLimits, \
     PositionThreshold, \
     SpringLawSolid
@@ -53,6 +55,12 @@ def sos_gen(zero_start=2.0, soft_start_s=5.0):
     return sos_fn
 
 
+def flat_gen():
+    def flat_fn(t):
+        return t * 0.0
+    return flat_fn
+
+
 class HiddenObjectsPerspective(Perspective):
 
     def __init__(self, hidden_obj_names):
@@ -60,10 +68,10 @@ class HiddenObjectsPerspective(Perspective):
 
     def task_to_view(self, task_state):
         perspective_state = copy.deepcopy(task_state)
-        if "dynamic_objects" in task_state:
-            for key, value in task_state["dynamic_objects"].items():
+        if 'dynamic_objects' in task_state:
+            for key, value in task_state['dynamic_objects'].items():
                 if key in self.hidden_obj_names:
-                    perspective_state["dynamic_objects"].pop(key)
+                    perspective_state['dynamic_objects'].pop(key)
                     
         return perspective_state
 
@@ -75,10 +83,10 @@ class FlippedHiddenObjectsPerspective(FlippedPerspective):
 
     def task_to_view(self, task_state):
         perspective_state = copy.deepcopy(task_state)
-        if "dynamic_objects" in task_state:
-            for key, value in task_state["dynamic_objects"].items():
+        if 'dynamic_objects' in task_state:
+            for key, value in task_state['dynamic_objects'].items():
                 if key in self.hidden_obj_names:
-                    perspective_state["dynamic_objects"].pop(key)
+                    perspective_state['dynamic_objects'].pop(key)
 
         return super().task_to_view(perspective_state)
 
@@ -91,7 +99,7 @@ class BlankTask(MultiAgentTask):
                          datafolder=datafolder,
                          duration=duration)
 
-        handle_obj = DynamicObject("handle", 0.0)
+        handle_obj = DynamicObject('handle', 0.0)
         self.add_obj(handle_obj)
         self.roles.append(Role(handle_obj))
 
@@ -103,13 +111,13 @@ class MessageTask(MultiAgentTask):
 
         self.message = message
 
-        handle_obj = DynamicObject("handle", 0.0)
+        handle_obj = DynamicObject('handle', 0.0)
         self.add_obj(handle_obj)
         self.roles.append(Role(handle_obj))
 
     def get_state_dict(self):
         state = super().get_state_dict()
-        state["task_message"] = self.message        
+        state['task_message'] = self.message
         return state
 
 
@@ -117,7 +125,7 @@ class ResetHandleTask(MessageTask):
 
     def __init__(self, name, timestep):
         super().__init__(name,
-                         "Gently pull your handle toward you until the handle stops.",
+                         'Gently pull your handle toward you until the handle stops.',
                          timestep, None)
 
         handle_obj = self.dynamic_objects[0]
@@ -125,17 +133,73 @@ class ResetHandleTask(MessageTask):
 
 
 
-class CenterHandleTask(MessageTask):
+class CenterHandleTask(MultiAgentTask):
 
-    def __init__(self, name, timestep):
+    def __init__(self, name,  timestep, duration):
         super().__init__(name,
-                         "Align the cursor with the line with the handle.",
-                         timestep, None)
+                         timestep,
+                         duration=duration)
 
-        handle_obj = self.dynamic_objects[0]
-        self.add_endcond(PositionThreshold(handle_obj,
-                                           -0.8,
-                                           check_greater=False))
+        self.add_ref(ReferenceTrajectory('flat',
+                                         trajectory_function=flat_gen()))
+
+        obj_radius = 0.05
+
+        self_color = (0, 0, 255)
+        other_color = (255, 0, 127)
+
+        p1_handle_obj = DynamicObject('p1_handle', 0.0,
+                                      initial_state=[-1.0, 0.0, 0.0],
+                                      record_data=False,
+                                      appearance={'shape': 'circle',
+                                                  'radius': obj_radius,
+                                                  'color': self_color})
+
+        p1_handle_draw = DynamicObject('p1_handle_draw', 0.0,
+                                       initial_state=[-1.0, 0.0, 0.0],
+                                       record_data=False,
+                                       appearance={'shape': 'circle',
+                                                   'radius': obj_radius,
+                                                   'color': other_color})
+
+        p2_handle_obj = DynamicObject('p2_handle', 0.0,
+                                      initial_state=[1.0, 0.0, 0.0],
+                                      record_data=False,
+                                      appearance={'shape': 'circle',
+                                                  'radius': obj_radius,
+                                                  'color': self_color})
+
+        p2_handle_draw = DynamicObject('p2_handle_draw', 0.0,
+                                       initial_state=[1.0, 0.0, 0.0],
+                                       record_data=False,
+                                       appearance={'shape': 'circle',
+                                                   'radius': obj_radius,
+                                                   'color': other_color})
+
+        self.add_obj(p1_handle_draw)
+        self.add_obj(p2_handle_draw)
+
+        self.add_obj(p1_handle_obj)
+        self.add_obj(p2_handle_obj)
+
+
+        self.add_constraint(BindPosition(p1_handle_draw, p1_handle_obj))
+        self.add_constraint(BindPosition(p2_handle_draw, p2_handle_obj))
+
+        self.roles.append(Role(p1_handle_obj,
+                               perspective=HiddenObjectsPerspective(
+                                   ['p1_handle_draw',
+                                    'p2_handle'])))
+        self.roles.append(Role(p2_handle_obj,
+                               perspective=FlippedHiddenObjectsPerspective(
+                                   ['p2_handle_draw',
+                                    'p1_handle'])))
+
+        self.add_endcond(ConditionAND([
+            InRangeForDuration(p1_handle_obj, 0.2, -0.2, duration_s=2.0),
+            InRangeForDuration(p2_handle_obj, 0.2, -0.2, duration_s=2.0),
+        ]))
+
 
 
 class SoloAsymForceTrackingTask(MultiAgentTask):
@@ -147,11 +211,11 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
                          duration=duration,
                          parameters=parameters)
 
-        k = parameters.get("k", 10.0)
-        push = parameters.get("push", 1.0)
-        pull = parameters.get("pull", 1.0)
+        k = parameters.get('k', 10.0)
+        push = parameters.get('push', 1.0)
+        pull = parameters.get('pull', 1.0)
 
-        self.add_ref(ReferenceTrajectory("sos",
+        self.add_ref(ReferenceTrajectory('sos',
                                          trajectory_function=sos_gen()))
 
         obj_radius = 0.05
@@ -161,37 +225,37 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
         self_color = (0,0,255)
         link_color = (0, 64, 128)
 
-        handle_obj = DynamicObject("handle", 0.0,
+        handle_obj = DynamicObject('handle', 0.0,
                                    initial_state=[-1.0, 0.0, 0.0])
 
-        handle_draw = DynamicObject("handle_draw", 0.0,
+        handle_draw = DynamicObject('handle_draw', 0.0,
                                     initial_state=[-1.0, 0.0, 0.0],
                                     record_data=False,
-                                    appearance={"shape": "circle",
-                                                "radius": obj_radius,
-                                                "color": self_color})
+                                    appearance={'shape': 'circle',
+                                                'radius': obj_radius,
+                                                'color': self_color})
 
-        cursor = DynamicObject("cursor", 0.1,
+        cursor = DynamicObject('cursor', 0.1,
                                initial_state=[0.0, 0.0, 0.0],
-                               appearance={"shape": "rectangle",
-                                           "width": obj_radius * 3.0,
-                                           "height": obj_radius * 1.75,
-                                           "color": cursor_color})
+                               appearance={'shape': 'rectangle',
+                                           'width': obj_radius * 3.0,
+                                           'height': obj_radius * 1.75,
+                                           'color': cursor_color})
 
-        self_contact_obj = DynamicObject("self_contact", 0.0,
+        self_contact_obj = DynamicObject('self_contact', 0.0,
                                          initial_state=[0.0, 0.0, 0.0],
                                          record_data=False,
-                                         appearance={"shape": "circle",
-                                                     "radius": obj_radius/2.0,
-                                                     "color": self_color})
+                                         appearance={'shape': 'circle',
+                                                     'radius': obj_radius/2.0,
+                                                     'color': self_color})
 
-        self_contact_link = DynamicObject("self_contact_link", 0.0,
+        self_contact_link = DynamicObject('self_contact_link', 0.0,
                                           initial_state=[0.0, 0.0, 0.0],
                                           record_data=False,
-                                          appearance={"shape": "link",
-                                                      "start_ref": "self_contact",
-                                                      "end_ref": "handle_draw",
-                                                      "color": link_color})
+                                          appearance={'shape': 'link',
+                                                      'start_ref': 'self_contact',
+                                                      'end_ref': 'handle_draw',
+                                                      'color': link_color})
         self.add_obj(handle_obj)
         self.add_obj(cursor)
 
@@ -228,81 +292,100 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
                          duration=duration,
                          parameters=parameters)
 
-        k = parameters.get("k", 10.0)
-        p1_push = parameters.get("p1_push", 1.0)
-        p1_pull = parameters.get("p1_pull", 1.0)
-        p2_push = parameters.get("p2_push", 1.0)
-        p2_pull = parameters.get("p2_pull", 1.0)
+        k = parameters.get('k', 10.0)
+        p1_push = parameters.get('p1_push', 1.0)
+        p1_pull = parameters.get('p1_pull', 1.0)
+        p2_push = parameters.get('p2_push', 1.0)
+        p2_pull = parameters.get('p2_pull', 1.0)
 
-        self.add_ref(ReferenceTrajectory("sos", trajectory_function = sos_gen()))
+        self.add_ref(ReferenceTrajectory('sos', trajectory_function = sos_gen()))
 
         obj_radius = 0.05
         rest_length = obj_radius * 4
 
         cursor_color = (220, 220, 220)
         self_color = (0,0,255)
+        link_color = (0, 64, 128)
         other_color = (255, 0, 255)
 
-        p1_handle_obj = DynamicObject("p1_handle", 0.0, 
-                                      initial_state=[-1.0, 0.0, 0.0])
-        p1_handle_draw = DynamicObject("p1_handle_draw", 0.0, 
-                                       initial_state=[-1.0, 0.0, 0.0],
+        p1_handle_obj = DynamicObject('p1_handle', 0.0,
+                                      initial_state=[-0.0, 0.0, 0.0])
+        p1_handle_draw = DynamicObject('p1_handle_draw', 0.0,
+                                       initial_state=[-0.0, 0.0, 0.0],
                                        record_data=False,
-                                       appearance={"shape": "circle",
-                                                   "radius": obj_radius,
-                                                   "color": self_color})
+                                       appearance={'shape': 'circle',
+                                                   'radius': obj_radius,
+                                                   'color': self_color})
 
-        p2_handle_obj = DynamicObject("p2_handle", 0.0, 
-                                      initial_state=[1.0, 0.0, 0.0])
+        p2_handle_obj = DynamicObject('p2_handle', 0.0,
+                                      initial_state=[0.0, 0.0, 0.0])
 
-        p2_handle_draw = DynamicObject("p2_handle_draw", 0.0, 
-                                       initial_state=[1.0, 0.0, 0.0],
+        p2_handle_draw = DynamicObject('p2_handle_draw', 0.0,
+                                       initial_state=[0.0, 0.0, 0.0],
                                        record_data=False,
-                                       appearance={"shape": "circle",
-                                                   "radius": obj_radius,
-                                                   "color":self_color})
+                                       appearance={'shape': 'circle',
+                                                   'radius': obj_radius,
+                                                   'color':self_color})
 
-        cursor = DynamicObject("cursor", 0.1, 
+        cursor = DynamicObject('cursor', 0.1,
                                initial_state=[0.0, 0.0, 0.0],
-                               appearance={"shape":"rectangle", 
-                                           "width":obj_radius * 3.0,
-                                           "height":obj_radius * 1.0, 
-                                           "color":cursor_color})
+                               appearance={'shape':'rectangle',
+                                           'width':obj_radius * 3.0,
+                                           'height':obj_radius * 1.0,
+                                           'color':cursor_color})
 
-        p1_self_contact_obj = DynamicObject("p1_self_contact", 0.0, 
+        p1_self_contact_obj = DynamicObject('p1_self_contact', 0.0,
                                             initial_state=[0.0, 0.0, 0.0],
                                             record_data=False,
-                                            appearance={"shape":"circle", 
-                                                        "radius":obj_radius/2, 
-                                                        "color":self_color})
+                                            appearance={'shape':'circle',
+                                                        'radius':obj_radius/2,
+                                                        'color':self_color})
 
-        p1_other_contact_obj = DynamicObject("p1_other_contact", 0.0, 
+        p1_contact_link = DynamicObject('p1_contact_link', 0.0,
+                                        initial_state=[0.0, 0.0, 0.0],
+                                        record_data=False,
+                                        appearance={'shape': 'link',
+                                                    'start_ref': 'p1_self_contact',
+                                                    'end_ref': 'p1_handle_draw',
+                                                    'color': link_color})
+
+        p1_other_contact_obj = DynamicObject('p1_other_contact', 0.0,
                                              initial_state=[0.0, 0.0, 0.0],
                                              record_data=False,
-                                             appearance={"shape":"circle", 
-                                                         "radius":obj_radius/2, 
-                                                         "color":other_color})
+                                             appearance={'shape':'circle',
+                                                         'radius':obj_radius/2,
+                                                         'color':other_color})
 
-        p2_self_contact_obj = DynamicObject("p2_self_contact", 0.0, 
+        p2_self_contact_obj = DynamicObject('p2_self_contact', 0.0,
                                             initial_state=[0.0, 0.0, 0.0],
                                             record_data=False,
-                                            appearance={"shape":"circle", 
-                                                        "radius":obj_radius/2, 
-                                                        "color":self_color})
+                                            appearance={'shape':'circle',
+                                                        'radius':obj_radius/2,
+                                                        'color':self_color})
 
-        p2_other_contact_obj = DynamicObject("p2_other_contact", 0.0, 
+        p2_contact_link = DynamicObject('p2_contact_link', 0.0,
+                                        initial_state=[0.0, 0.0, 0.0],
+                                        record_data=False,
+                                        appearance={'shape': 'link',
+                                                    'start_ref': 'p2_self_contact',
+                                                    'end_ref': 'p2_handle_draw',
+                                                    'color': link_color})
+
+        p2_other_contact_obj = DynamicObject('p2_other_contact', 0.0,
                                              initial_state=[0.0, 0.0, 0.0],
                                              record_data=False,
-                                             appearance={"shape":"circle", 
-                                                         "radius":obj_radius/2, 
-                                                         "color":other_color})
+                                             appearance={'shape':'circle',
+                                                         'radius':obj_radius/2,
+                                                         'color':other_color})
 
         self.add_obj(p1_handle_obj)
         self.add_obj(p2_handle_obj)
         self.add_obj(cursor)
 
+        self.add_obj(p1_contact_link)
         self.add_obj(p1_self_contact_obj)
         self.add_obj(p1_other_contact_obj)
+        self.add_obj(p2_contact_link)
         self.add_obj(p2_self_contact_obj)
         self.add_obj(p2_other_contact_obj)
 
@@ -348,83 +431,98 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
         self.add_constraint(Damping(1, cursor))
 
         self.roles.append(Role(p1_handle_obj,
-                               perspective=HiddenObjectsPerspective(["p2_handle_draw",
-                                                                     "p2_self_contact",
-                                                                     "p2_other_contact"])))
+                               perspective=HiddenObjectsPerspective(['p2_handle_draw',
+                                                                     'p2_self_contact',
+                                                                     'p2_contact_link',
+                                                                     'p2_other_contact'])))
         self.roles.append(Role(p2_handle_obj,
-                               perspective=FlippedHiddenObjectsPerspective(["p1_handle_draw",
-                                                                            "p1_self_contact",
-                                                                            "p1_other_contact"])))
+                               perspective=FlippedHiddenObjectsPerspective(['p1_handle_draw',
+                                                                            'p1_self_contact',
+                                                                            'p1_contact_link',
+                                                                            'p1_other_contact'])))
 
 
 class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
 
     def __init__(self):
-        super().__init__("AsymDyadSlider")
+        super().__init__('AsymDyadSlider')
 
         self.timestep = 1.0 / 70.0
 
         duration = 60.0
         k = 5.0
 
-        self.procedure.append([MessageTask("msgwelcome1",
-                                           "Welcome to the Experiment 1",
+        self.procedure.append([MessageTask('msgwelcome1',
+                                           'Welcome to the Experiment 1',
                                            self.timestep, 3.0),
-                               MessageTask("msgwelcome2",
-                                           "Welcome to the Experiment 2",
+                               MessageTask('msgwelcome2',
+                                           'Welcome to the Experiment 2',
                                            self.timestep, 3.0)])
 
-        self.procedure.append([ResetHandleTask("1-reset1", self.timestep),
-                               ResetHandleTask("1-reset2", self.timestep)])
+        #self.procedure.append([ResetHandleTask('1-reset1', self.timestep),
+        #                       ResetHandleTask('1-reset2', self.timestep)])
+        self.procedure.append([CenterHandleTask('1-reset',
+                                                self.timestep,
+                                                duration=None)])
 
-        params1 = {"k": k,
-                  "p1_push": 1.0, "p1_pull": 1.0,
-                  "p2_push": 1.0, "p2_pull": 1.0}
-        self.procedure.append([DyadAsymForceTrackingTask("1-dyad",
+        params1 = {'k': k,
+                   'p1_push': 1.0, 'p1_pull': 1.0,
+                   'p2_push': 1.0, 'p2_pull': 1.0}
+        self.procedure.append([DyadAsymForceTrackingTask('1-dyad',
                                                          self.timestep,
                                                          self.datafolder,
                                                          duration,
                                                          parameters=params1)])
         
-        self.procedure.append([ResetHandleTask("2-reset1", self.timestep),
-                               ResetHandleTask("2-reset2", self.timestep)])
+        self.procedure.append([ResetHandleTask('2-reset1', self.timestep),
+                               ResetHandleTask('2-reset2', self.timestep)])
 
-        params2 = {"k": k,
-                  "p1_push": 0.5, "p1_pull": 1.0,
-                  "p2_push": 0.5, "p2_pull": 1.0}
-        self.procedure.append([DyadAsymForceTrackingTask("2-dyad",
+        params2 = {'k': k,
+                   'p1_push': 0.5, 'p1_pull': 1.0,
+                   'p2_push': 0.5, 'p2_pull': 1.0}
+        self.procedure.append([DyadAsymForceTrackingTask('2-dyad',
                                                          self.timestep,
                                                          self.datafolder,
                                                          duration,
                                                          parameters=params2)])
 
-        params3 = {"k": k,
-                  "p1_push": 1.0, "p1_pull": 0.5,
-                  "p2_push": 1.0, "p2_pull": 0.5}
-        self.procedure.append([ResetHandleTask("3-reset1", self.timestep),
-                               ResetHandleTask("3-reset2", self.timestep)])
-        self.procedure.append([DyadAsymForceTrackingTask("3-dyad",
+        params3 = {'k': k,
+                   'p1_push': 1.0, 'p1_pull': 0.5,
+                   'p2_push': 1.0, 'p2_pull': 0.5}
+        self.procedure.append([ResetHandleTask('3-reset1', self.timestep),
+                               ResetHandleTask('3-reset2', self.timestep)])
+        self.procedure.append([DyadAsymForceTrackingTask('3-dyad',
                                                          self.timestep,
                                                          self.datafolder,
                                                          duration,
                                                          parameters=params3)])
 
-        self.procedure.append([MessageTask("msgcomplete1", "Experiment Complete. 1", self.timestep, 5.0),
-                               MessageTask("msgcomplete2", "Experiment Complete. 2", self.timestep, 5.0)])
+        self.procedure.append([MessageTask('msgcomplete1',
+                                           'Experiment Complete. 1',
+                                           self.timestep,
+                                           5.0),
+                               MessageTask('msgcomplete2',
+                                           'Experiment Complete. 2',
+                                           self.timestep,
+                                           5.0)])
 
-        self.participants.append(HumanFalconParticipant("player1", self.timestep, 0))
-        self.participants.append(HumanFalconParticipant("player2", self.timestep, 1))
+        self.participants.append(HumanFalconParticipant('player1',
+                                                        self.timestep,
+                                                        0))
+        self.participants.append(HumanFalconParticipant('player2',
+                                                        self.timestep,
+                                                        1))
 
         pyglet.clock.schedule_interval(self.step, self.timestep)
 
     def completed(self):
         super().completed()
-        pyglet.app.exit()   
+        pyglet.app.exit()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     experiment = AsymmetricDyadSliderExperiment()
     experiment.assign()
 
-    cProfile.run("pyglet.app.run()", sort="tottime")
+    cProfile.run('pyglet.app.run()', sort='tottime')

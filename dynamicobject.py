@@ -195,7 +195,7 @@ class ConditionAND(ConditionOR):
 
     def check(self, dt_s):
         for ref in self.references:
-            if(ref.check(dt_s)):
+            if(not ref.check(dt_s)):
                 return False
         return True
 
@@ -232,13 +232,14 @@ class InRangeForDuration(Condition):
 
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
-        self.duration = duration
-        self.elapsed = 0.0
+        self.duration_s = duration_s
+        self.elapsed_s = 0.0
 
     def check(self, dt_s):
+        print(self.target.state[0], self.upper_bound, self.lower_bound, self.elapsed_s)
         if ((self.target.state[0] <= self.upper_bound)
-            and (self.target.state[0] >= self.lower_bound)):
-           elapsed += dt_s
+           and (self.target.state[0] >= self.lower_bound)):
+            self.elapsed_s += dt_s
         else:
-            elapsed = 0.0
-        return (elapsed >=  duration)
+            self.elapsed_s = 0.0
+        return (self.elapsed_s >=  self.duration_s)
