@@ -140,6 +140,8 @@ class CenterHandleTask(MultiAgentTask):
                          timestep,
                          duration=duration)
 
+        self.message = 'Align your cursor (blue) with the line. When both subjects are aligned, the task will start.'
+
         self.add_ref(ReferenceTrajectory('flat',
                                          trajectory_function=flat_gen()))
 
@@ -196,9 +198,14 @@ class CenterHandleTask(MultiAgentTask):
                                     'p1_handle'])))
 
         self.add_endcond(ConditionAND([
-            InRangeForDuration(p1_handle_obj, 0.2, -0.2, duration_s=2.0),
-            InRangeForDuration(p2_handle_obj, 0.2, -0.2, duration_s=2.0),
+            InRangeForDuration(p1_handle_obj, 0.2, -0.2, duration_s=1.0),
+            InRangeForDuration(p2_handle_obj, 0.2, -0.2, duration_s=1.0),
         ]))
+
+    def get_state_dict(self):
+        state = super().get_state_dict()
+        state['task_message'] = self.message
+        return state
 
 
 
@@ -253,6 +260,8 @@ class SoloAsymForceTrackingTask(MultiAgentTask):
                                           initial_state=[0.0, 0.0, 0.0],
                                           record_data=False,
                                           appearance={'shape': 'link',
+                                                      'linktype': 'bulge',
+                                                      'start_ref': 'p1_self_contact',
                                                       'start_ref': 'self_contact',
                                                       'end_ref': 'handle_draw',
                                                       'color': link_color})
@@ -345,6 +354,7 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
                                         initial_state=[0.0, 0.0, 0.0],
                                         record_data=False,
                                         appearance={'shape': 'link',
+                                                    'linktype': 'bulge',
                                                     'start_ref': 'p1_self_contact',
                                                     'end_ref': 'p1_handle_draw',
                                                     'color': link_color})
@@ -367,6 +377,8 @@ class DyadAsymForceTrackingTask(MultiAgentTask):
                                         initial_state=[0.0, 0.0, 0.0],
                                         record_data=False,
                                         appearance={'shape': 'link',
+                                                    'linktype': 'bulge',
+                                                    'start_ref': 'p1_self_contact',
                                                     'start_ref': 'p2_self_contact',
                                                     'end_ref': 'p2_handle_draw',
                                                     'color': link_color})
@@ -459,8 +471,6 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
                                            'Welcome to the Experiment 2',
                                            self.timestep, 3.0)])
 
-        #self.procedure.append([ResetHandleTask('1-reset1', self.timestep),
-        #                       ResetHandleTask('1-reset2', self.timestep)])
         self.procedure.append([CenterHandleTask('1-reset',
                                                 self.timestep,
                                                 duration=None)])
@@ -474,8 +484,9 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
                                                          duration,
                                                          parameters=params1)])
         
-        self.procedure.append([ResetHandleTask('2-reset1', self.timestep),
-                               ResetHandleTask('2-reset2', self.timestep)])
+        self.procedure.append([CenterHandleTask('2-reset',
+                                                self.timestep,
+                                                duration=None)])
 
         params2 = {'k': k,
                    'p1_push': 0.5, 'p1_pull': 1.0,
@@ -486,11 +497,12 @@ class AsymmetricDyadSliderExperiment(MultiAgentExperiment):
                                                          duration,
                                                          parameters=params2)])
 
+        self.procedure.append([CenterHandleTask('3-reset',
+                                                self.timestep,
+                                                duration=None)])
         params3 = {'k': k,
                    'p1_push': 1.0, 'p1_pull': 0.5,
                    'p2_push': 1.0, 'p2_pull': 0.5}
-        self.procedure.append([ResetHandleTask('3-reset1', self.timestep),
-                               ResetHandleTask('3-reset2', self.timestep)])
         self.procedure.append([DyadAsymForceTrackingTask('3-dyad',
                                                          self.timestep,
                                                          self.datafolder,

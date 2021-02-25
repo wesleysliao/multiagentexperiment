@@ -131,31 +131,73 @@ class HumanFalconParticipant(Participant):
 
                 elif value["appearance"]["shape"] == "link":
 
-                    start_ref = self.visible_state["dynamic_objects"][value["appearance"]["start_ref"]]
-                    end_ref = self.visible_state["dynamic_objects"][value["appearance"]["end_ref"]]
-                    start_w = self.scale * 2 * start_ref["appearance"]["radius"]
-                    end_w = self.scale * 2 * end_ref["appearance"]["radius"]
-                    x1 = self.offset[0] + self.scale - (start_w / 2)
-                    y1 = self.offset[1] + self.scale + (start_ref["state"][0] * self.scale)
-                    x2 = x1 + start_w
-                    y2 = y1
-                    x3 = self.offset[0] + self.scale - (end_w / 2)
-                    y3 = self.offset[1] + self.scale + (end_ref["state"][0] * self.scale)
-                    x4 = x3 + end_w
-                    y4 = y3
-                    color = value["appearance"]["color"]
-                    pyglet.graphics.draw(4, pyglet.gl.GL_QUADS,
-                                         ('v2f', (x1, y1, x2, y2, x4, y4, x3, y3)),
-                                         ('c4B', (color[0], color[1], color[2], 64,
-                                                  color[0], color[1], color[2], 64,
-                                                  color[0], color[1], color[2], 64,
-                                                  color[0], color[1], color[2], 64,)))
+                    if value["appearance"].get("linktype") == "bulge":
+                        start_ref = self.visible_state["dynamic_objects"][value["appearance"]["start_ref"]]
+                        end_ref = self.visible_state["dynamic_objects"][value["appearance"]["end_ref"]]
+                        start_w = self.scale * 2 * start_ref["appearance"]["radius"]
+                        end_w = self.scale * 2 * end_ref["appearance"]["radius"]
+
+                        x_center = self.offset[0] + self.scale
+                        x1 = x_center - (start_w / 2)
+                        y1 = self.offset[1] + self.scale + (start_ref["state"][0] * self.scale)
+                        x2 = x1 + start_w
+                        y2 = y1
+
+                        stretch = ((4 * end_ref["appearance"]["radius"])
+                                  / abs(start_ref["state"][0] - end_ref["state"][0]))
+
+                        middle = stretch * ((start_w + end_w) / 2)
+                        x3 = x_center - (middle / 2)
+                        x4 = x_center + (middle / 2)
+
+                        x5 = x_center - (end_w / 2)
+                        y5 = self.offset[1] + self.scale + (end_ref["state"][0] * self.scale)
+                        x6 = x5 + end_w
+                        y6 = y5
+
+                        y3 = y1 + ((y5 - y1) / 2.0)
+                        y4 = y3
+
+                        color = value["appearance"]["color"]
+                        pyglet.graphics.draw(8, pyglet.gl.GL_QUADS,
+                                            ('v2f', (x1, y1, x2, y2, x4, y4, x3, y3,
+                                                     x3, y3, x4, y4, x6, y6, x5, y5)),
+                                            ('c4B', (color[0], color[1], color[2], 64,
+                                                     color[0], color[1], color[2], 64,
+                                                     color[0], color[1], color[2], 64,
+                                                     color[0], color[1], color[2], 64,
+                                                     color[0], color[1], color[2], 64,
+                                                     color[0], color[1], color[2], 64,
+                                                     color[0], color[1], color[2], 64,
+                                                     color[0], color[1], color[2], 64,)))
+
+                    else:
+
+                        start_ref = self.visible_state["dynamic_objects"][value["appearance"]["start_ref"]]
+                        end_ref = self.visible_state["dynamic_objects"][value["appearance"]["end_ref"]]
+                        start_w = self.scale * 2 * start_ref["appearance"]["radius"]
+                        end_w = self.scale * 2 * end_ref["appearance"]["radius"]
+                        x1 = self.offset[0] + self.scale - (start_w / 2)
+                        y1 = self.offset[1] + self.scale + (start_ref["state"][0] * self.scale)
+                        x2 = x1 + start_w
+                        y2 = y1
+                        x3 = self.offset[0] + self.scale - (end_w / 2)
+                        y3 = self.offset[1] + self.scale + (end_ref["state"][0] * self.scale)
+                        x4 = x3 + end_w
+                        y4 = y3
+                        color = value["appearance"]["color"]
+                        pyglet.graphics.draw(4, pyglet.gl.GL_QUADS,
+                                            ('v2f', (x1, y1, x2, y2, x4, y4, x3, y3)),
+                                            ('c4B', (color[0], color[1], color[2], 64,
+                                                    color[0], color[1], color[2], 64,
+                                                    color[0], color[1], color[2], 64,
+                                                    color[0], color[1], color[2], 64,)))
 
         if "task_message" in self.visible_state:
             pyglet.text.Label(self.visible_state["task_message"],
                               font_name="FreeMono", font_size=12,
                               x= self.offset[0] + self.scale, 
-                              y= self.offset[1] + self.scale,
+                              y= self.offset[1] + (self.scale * 1.1),
                               anchor_x="center", anchor_y="center").draw()
 
         self.fps_display.draw()

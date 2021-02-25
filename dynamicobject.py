@@ -236,10 +236,9 @@ class InRangeForDuration(Condition):
         self.elapsed_s = 0.0
 
     def check(self, dt_s):
-        print(self.target.state[0], self.upper_bound, self.lower_bound, self.elapsed_s)
         if ((self.target.state[0] <= self.upper_bound)
            and (self.target.state[0] >= self.lower_bound)):
             self.elapsed_s += dt_s
         else:
             self.elapsed_s = 0.0
-        return (self.elapsed_s >=  self.duration_s)
+        return (self.elapsed_s >= self.duration_s)
